@@ -20,15 +20,11 @@ int main(int argc, char* argv[])
     Engine::initEngine();
 
     while (!Engine::quit) {
-
+        //Process input
+        Engine::controller();
         
-        SDL_Event event;
-        SDL_PollEvent(&event);
-        switch (event.type) {
-        case SDL_EVENT_QUIT:
-            Engine::quit = true;
-            break;
-        }
+        //Render scene
+        Engine::draw();
 
     }
 
