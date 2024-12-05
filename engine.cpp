@@ -9,12 +9,21 @@ SDL_Window* window;
 SDL_Event event;
 std::vector<Engine::engineObject> activeObjects;
 const bool* SDLKeyStates;
+std::vector<bool> mouseWheel;
+//add scale
 //public
 bool Engine::quit = false;
 SDL_Point Engine::resolution = { 1920/2, 1080/2 };
 std::vector<int> Engine::keyStates;
-SDL_FPoint Engine::mousePos = { 0, 0 };
-std::vector<int> Engine::mouseStates;
+SDL_FPoint Engine::mousePos = { 0, 0 }; //add a second one for last possition? maybe make this a vector?
+std::vector<int> Engine::mouseStates; // make enum for buttons?
+//add mouse dragging info? last pos? or drag stat? bofa?
+std::vector<int> Engine::wheelStates; // make enum for directions?
+
+//TEMP ZONE
+SDL_Surface* tempSurf;
+SDL_Texture* tempTexture;
+SDL_FRect imgRect = { 0.0, 0.0, 100.0, 100.0 };
 
 //Mixing
 
@@ -50,23 +59,52 @@ void readMouse()
 		}
 	}
 
-
-
+	//loop through each direction of the mouse wheel
+	for (int i = 0; i < mouseWheel.size(); i++)
+	{
+		//if the key is pressed
+		if (mouseWheel[i])
+		{
+			//if it wasnt held down set it to just pressed
+			if (Engine::wheelStates[i] == 0 || Engine::wheelStates[i] == 3)
+				Engine::wheelStates[i] = 1;
+			//if it was already pressed mark as held down
+			else if (Engine::wheelStates[i] == 1 || Engine::wheelStates[i] == 2)
+				Engine::wheelStates[i] = 2;
+		}
+		//if not and the key state was non zero
+		else if (Engine::wheelStates[i])
+		{
+			//if it was held down mark as just released
+			if (Engine::wheelStates[i] == 1 || Engine::wheelStates[i] == 2)
+				Engine::wheelStates[i] = 3;
+			//if already released mark as clear
+			else
+				Engine::wheelStates[i] = 0;
+		}
+	}
+	//reset mouseWheel
+	std::fill(mouseWheel.begin(), mouseWheel.end(), false);
 	
 	
 	//draws mouse buttons and their states for debugging
-	printf("Pos: %f, %f ", Engine::mousePos.x, Engine::mousePos.y);
-	for (int i = 0; i < Engine::mouseStates.size(); i++)
-	{
-		if (Engine::mouseStates[i] != 0)
-		{
-			printf("Button %i: %i ", i, Engine::mouseStates[i]);
-		}
-	}
-	printf("\n");
+	//printf("Pos: %f, %f ", Engine::mousePos.x, Engine::mousePos.y);
+	//for (int i = 0; i < Engine::mouseStates.size(); i++)
+	//{
+	//	if (Engine::mouseStates[i] != 0)
+	//	{
+	//		printf("Button %i: %i\n", i, Engine::mouseStates[i]);
+	//	}
+	//}
 
-	
-	//mouse wheel NEED ADDED
+	//draws mouse wheel and their states for debugging
+	//for (int i = 0; i < Engine::wheelStates.size(); i++)
+	//{
+	//	if (Engine::wheelStates[i] != 0)
+	//	{
+	//		printf("Direction %i: %i\n", i, Engine::wheelStates[i]);
+	//	}
+	//}
 }
 
 static void readKeyboard()
@@ -97,11 +135,11 @@ static void readKeyboard()
 	}
 
 	//draws keys and their states for debugging
-	//for (int i = 0; i < keyStates.size(); i++)
+	//for (int i = 0; i < Engine::keyStates.size(); i++)
 	//{
-	//	if (keyStates[i] != 0)
+	//	if (Engine::keyStates[i] != 0)
 	//	{
-	//		printf("%i: %i \n", i, keyStates[i]);
+	//		printf("%i: %i \n", i, Engine::keyStates[i]);
 	//	}
 	//}
 }
@@ -114,23 +152,27 @@ void Engine::controller()
 		case SDL_EVENT_QUIT:
 			Engine::quit = true;
 			break;
-		/*case SDL_EVENT_KEY_DOWN:
-			switch (event.key.scancode)
-			{
-			case SDL_SCANCODE_ESCAPE:
-				Engine::quit = true;
-				break;
-			case SDL_SCANCODE_V:
-				int vSync;
-				SDL_GetRenderVSync(renderer, &vSync);
-				if (vSync)
-					SDL_SetRenderVSync(renderer, 0);
-				else
-					SDL_SetRenderVSync(renderer, 1);
-				break;
-			}*/
+		case SDL_EVENT_MOUSE_WHEEL:
+			if (event.wheel.y > 0)
+				mouseWheel[0] = true;
+			else
+				mouseWheel[1] = true;
+			break;
 		}
 	}
+
+	//TEMP ZONE
+	if(Engine::keyStates[SDL_SCANCODE_ESCAPE])
+		Engine::quit = true;
+	if (Engine::wheelStates[0])
+		imgRect.y--;
+	if (Engine::wheelStates[1])
+		imgRect.y++;
+	if (Engine::keyStates[SDL_SCANCODE_A])
+		imgRect.x--;
+	if (Engine::keyStates[SDL_SCANCODE_D])
+		imgRect.x++;
+
 	readMouse();
 	readKeyboard();
 }
@@ -156,6 +198,7 @@ void Engine::draw()
 	SDL_RenderClear(renderer);
 
 	//TEMP ZONE
+	SDL_RenderTexture(renderer, tempTexture, NULL, &imgRect);
 	for ( auto& obj : activeObjects) {
 		obj.pos = { float(rand() % resolution.x), float(rand() % resolution.y) };
 	}
@@ -239,14 +282,18 @@ bool initController()
 	//resize our vector to be the same amount
 	Engine::keyStates.resize(SDL_SCANCODE_COUNT);
 	//set each key to 0
-	for (auto& key : Engine::keyStates)
-		key = 0;
+	std::fill(Engine::keyStates.begin(), Engine::keyStates.end(), 0);
 
 	//resize our mouseStates vector to hold all out mouse buttons
 	Engine::mouseStates.resize(5);
 	//set each key to 0
-	for (auto& button : Engine::mouseStates)
-		button = 0;
+	std::fill(Engine::mouseStates.begin(), Engine::mouseStates.end(), 0);
+
+	//resize/set default mouseWheel/wheelStates for each direction
+	mouseWheel.resize(4);
+	std::fill(mouseWheel.begin(), mouseWheel.end(), false);
+	Engine::wheelStates.resize(4);
+	std::fill(Engine::wheelStates.begin(), Engine::wheelStates.end(), 0);
 
 
 	return true;
@@ -260,7 +307,9 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 
 	initController();
 
-	//TEMP ZONE
+	//TEMP SHIT
+	tempSurf = IMG_Load("resource/test.png");
+	tempTexture = SDL_CreateTextureFromSurface(renderer, tempSurf);
 	for (int i = 0; i < 100; i++)
 	{
 		activeObjects.push_back(engineObject({ 0, 0 }, { Uint8(rand() % 255), Uint8(rand() % 255), Uint8(rand() % 255),  255 }));
