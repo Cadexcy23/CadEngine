@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string>
 #include <random>
 #include "engine.h"
 
@@ -8,8 +7,10 @@ SDL_Renderer* renderer;
 SDL_Window* window;
 SDL_Event event;
 std::vector<Engine::engineObject> activeObjects;
+std::vector<std::pair<const char*, SDL_Texture*>> activeTextures; //add an auditor at some point
 const bool* SDLKeyStates;
 std::vector<bool> mouseWheel;
+float scale;
 //add scale
 //public
 bool Engine::quit = false;
@@ -20,10 +21,6 @@ std::vector<int> Engine::mouseStates; // make enum for buttons?
 //add mouse dragging info? last pos? or drag stat? bofa?
 std::vector<int> Engine::wheelStates; // make enum for directions?
 
-//TEMP ZONE
-SDL_Surface* tempSurf;
-SDL_Texture* tempTexture;
-SDL_FRect imgRect = { 0.0, 0.0, 100.0, 100.0 };
 
 //Mixing
 
@@ -164,14 +161,6 @@ void Engine::controller()
 	//TEMP ZONE
 	if(Engine::keyStates[SDL_SCANCODE_ESCAPE])
 		Engine::quit = true;
-	if (Engine::wheelStates[0])
-		imgRect.y--;
-	if (Engine::wheelStates[1])
-		imgRect.y++;
-	if (Engine::keyStates[SDL_SCANCODE_A])
-		imgRect.x--;
-	if (Engine::keyStates[SDL_SCANCODE_D])
-		imgRect.x++;
 
 	readMouse();
 	readKeyboard();
@@ -179,10 +168,49 @@ void Engine::controller()
 
 //Rendering
 
+SDL_Texture* Engine::loadTex(const char* path)
+{
+	//Check if we already have this texture loaded
+	for (const auto& tex : activeTextures) 
+	{
+		//If we already have the texture loaded just return it
+		if (tex.first == path)
+			return tex.second;
+	}
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = IMG_Load(path);
+	if (loadedSurface == NULL)
+	{
+		printf("Unable to load image %s! SDL_image Error: %s\n", path, SDL_GetError());
+		return NULL;
+	}
+	//Create texture from surface pixels
+	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+	if (newTexture == NULL)
+	{
+		printf("Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError());
+		return NULL;
+	}
+	//Get rid of old loaded surface
+	SDL_DestroySurface(loadedSurface);
+
+	//Add tex to our list of loaded textures
+	activeTextures.push_back({ path, newTexture });
+
+	return newTexture;
+}
+
 void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
 {
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
+}
+
+void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect)
+{
+	SDL_RenderTexture(renderer, tex, NULL, &rect);
+	//SDL_RenderTextureRotated		add rotation as an option by adding defaukltted vars
 }
 
 void renderObjects()
@@ -196,14 +224,6 @@ void Engine::draw()
 {
 	//Clear screen
 	SDL_RenderClear(renderer);
-
-	//TEMP ZONE
-	SDL_RenderTexture(renderer, tempTexture, NULL, &imgRect);
-	for ( auto& obj : activeObjects) {
-		obj.pos = { float(rand() % resolution.x), float(rand() % resolution.y) };
-	}
-	
-
 
 	//Render all entities
 	renderObjects();
@@ -238,9 +258,9 @@ bool initSDL()
 bool initWindow(const char* title = "CadEngine", SDL_WindowFlags flags = NULL)
 {
 	window = SDL_CreateWindow(title, Engine::resolution.x, Engine::resolution.y, flags);
-	//SDL_Surface* icon = IMG_Load("Resource/icon.png"); //ADD IMG STUFF THEN WE CAN HAVE AN ICON
-	//SDL_SetWindowIcon(gWindow, icon);
-	//SDL_FreeSurface(icon);
+	SDL_Surface* icon = IMG_Load("Resource/icon.png");
+	SDL_SetWindowIcon(window, icon);
+	SDL_DestroySurface(icon);
 	if (window == NULL)
 	{
 		printf("Window could not be created! SDL Error: %s\n", SDL_GetError());
@@ -308,12 +328,9 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 	initController();
 
 	//TEMP SHIT
-	tempSurf = IMG_Load("resource/test.png");
-	tempTexture = SDL_CreateTextureFromSurface(renderer, tempSurf);
-	for (int i = 0; i < 100; i++)
-	{
-		activeObjects.push_back(engineObject({ 0, 0 }, { Uint8(rand() % 255), Uint8(rand() % 255), Uint8(rand() % 255),  255 }));
-	}
+	activeObjects.push_back(engineObject({ 0, 0 }, { 100, 100 }, loadTex("resource/test.png")));
+	activeObjects.push_back(engineObject({ 100, 0 }, { 100, 100 }, loadTex("resource/test2.png")));
+	activeObjects.push_back(engineObject({ 200, 0 }, { 100, 100 }, loadTex("resource/test.png")));
 
 
 
