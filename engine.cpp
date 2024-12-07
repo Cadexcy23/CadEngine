@@ -3,28 +3,43 @@
 #include "engine.h"
 
 //private
+const bool* SDLKeyStates;
+std::vector<bool> mouseWheel;
 SDL_Renderer* renderer;
 SDL_Window* window;
+SDL_Texture* screenTex;
+static SDL_Point baseRes = { 1920, 1080 };
 SDL_Event event;
 std::vector<Engine::engineObject> activeObjects;
 std::vector<std::pair<const char*, SDL_Texture*>> activeTextures; //add an auditor at some point
-const bool* SDLKeyStates;
-std::vector<bool> mouseWheel;
-float scale;
-//add scale
+Uint64 lastUpdateTime;
+float updatesPS;
+float framesPS;
 //public
 bool Engine::quit = false;
+bool Engine::showFPS = false;
 SDL_Point Engine::resolution = { 1920/2, 1080/2 };
-std::vector<int> Engine::keyStates;
 SDL_FPoint Engine::mousePos = { 0, 0 }; //add a second one for last possition? maybe make this a vector?
 std::vector<int> Engine::mouseStates; // make enum for buttons?
-//add mouse dragging info? last pos? or drag stat? bofa?
+std::vector<int> Engine::keyStates; //add mouse dragging info? last pos? or drag stat? bofa?
 std::vector<int> Engine::wheelStates; // make enum for directions?
 
 
 //Mixing
 
 //Controlling
+
+void profileUpdate()
+{
+	//compare last update to current time
+	Uint64 current = SDL_GetPerformanceCounter();
+	double elapsed = (current - lastUpdateTime) / static_cast<double>(SDL_GetPerformanceFrequency());
+	//save that as out current FPS
+	updatesPS = 1.0 / elapsed;
+	//printf("UPS: %f\n", updatesPS);
+	//set last update time
+	lastUpdateTime = SDL_GetPerformanceCounter();
+}
 
 void readMouse()
 {
@@ -141,6 +156,13 @@ static void readKeyboard()
 	//}
 }
 
+void updateObjects()
+{
+	for (auto& obj : activeObjects) {
+		obj.update();
+	}
+}
+
 void Engine::controller()
 {
 	while (SDL_PollEvent(&event)) {
@@ -161,14 +183,37 @@ void Engine::controller()
 	//TEMP ZONE
 	if(Engine::keyStates[SDL_SCANCODE_ESCAPE])
 		Engine::quit = true;
+	if (Engine::keyStates[SDL_SCANCODE_W])
+		activeObjects[1].hull.y--;
+	if (Engine::keyStates[SDL_SCANCODE_S])
+		activeObjects[1].hull.y++;
+	if (Engine::keyStates[SDL_SCANCODE_A])
+		activeObjects[1].hull.x--;
+	if (Engine::keyStates[SDL_SCANCODE_D])
+		activeObjects[1].hull.x++;
+	if (Engine::keyStates[SDL_SCANCODE_Q])
+		activeObjects[1].rot--;
+	if (Engine::keyStates[SDL_SCANCODE_E])
+		activeObjects[1].rot++;
+	if (Engine::keyStates[SDL_SCANCODE_V] == 1)
+	{
+		int syncState;
+		SDL_GetRenderVSync(renderer, &syncState);
+		SDL_SetRenderVSync(renderer, !syncState);
+	}
+
 
 	readMouse();
 	readKeyboard();
+
+	updateObjects();
+
+	profileUpdate();
 }
 
 //Rendering
 
-SDL_Texture* Engine::loadTex(const char* path)
+SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
 {
 	//Check if we already have this texture loaded
 	for (const auto& tex : activeTextures) 
@@ -207,10 +252,31 @@ void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
 	SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
 }
 
-void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect)
+void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
 {
-	SDL_RenderTexture(renderer, tex, NULL, &rect);
-	//SDL_RenderTextureRotated		add rotation as an option by adding defaukltted vars
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	if(fill)
+		SDL_RenderFillRect(renderer, &rect);
+	else
+		SDL_RenderRect(renderer, &rect);
+}
+
+void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale)
+{
+	SDL_FRect newRect = rect;
+	newRect.w *= scale;
+	newRect.h *= scale;
+	switch (center)
+	{
+	case true:
+		newRect.x -= newRect.w / 2;
+		newRect.y -= newRect.h / 2;
+		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		break;
+	case false:
+		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		break;
+	}
 }
 
 void renderObjects()
@@ -218,6 +284,16 @@ void renderObjects()
 	for (const auto& obj : activeObjects) {
 		obj.draw();
 	}
+}
+
+void renderScreen() // would having a second renderer for just doing this part make faster?
+{
+	//set renderr to the real window again
+	SDL_SetRenderTarget(renderer, NULL);
+	//render screenTex to it SCALED to the actual window size
+	SDL_RenderTexture(renderer, screenTex, NULL, NULL);
+	//reset renderer to the screentex
+	SDL_SetRenderTarget(renderer, screenTex);
 }
 
 void Engine::draw()
@@ -228,8 +304,13 @@ void Engine::draw()
 	//Render all entities
 	renderObjects();
 
+	//TEMP ZONE
+	//drawRect({ 100, 100, 100, 100 }, { 255, 0, 0, 255 });
+
+	//Run final render
+	renderScreen();
+	
 	//Update screen
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderPresent(renderer);
 }
 
@@ -243,12 +324,6 @@ bool initSDL()
 		printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
 		return false;
 	}
-	//Set Vsync
-	if (!SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1"))
-	{
-		printf("Warning: Linear texture filtering not enabled!");
-	}
-	//add more hints here
 
 
 	printf("SDL initialized!\n");
@@ -284,6 +359,13 @@ bool initRenderer()
 	//Initialize renderer color
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+	//Set Vsync
+	SDL_SetRenderVSync(renderer, 1);
+
+	//Create screen texture and set it as our render texture
+	screenTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, baseRes.x, baseRes.y);
+	SDL_SetRenderTarget(renderer, screenTex);
 
 	printf("Renderer initialized!\n");
 	return true;
@@ -321,6 +403,7 @@ bool initController()
 
 bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 {
+	srand(clock());
 	initSDL();
 	initWindow(title, winFlags);
 	initRenderer();
@@ -328,11 +411,13 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 	initController();
 
 	//TEMP SHIT
-	activeObjects.push_back(engineObject({ 0, 0 }, { 100, 100 }, loadTex("resource/test.png")));
-	activeObjects.push_back(engineObject({ 100, 0 }, { 100, 100 }, loadTex("resource/test2.png")));
-	activeObjects.push_back(engineObject({ 200, 0 }, { 100, 100 }, loadTex("resource/test.png")));
+	activeObjects.push_back(engineObject({ 0, 0, 1920, 1080 }, loadTex("resource/bg.png"), 0, false));
 
-
+	for (int i = 0; i < 1000; i++)
+	{
+		SDL_FPoint tempPoint = { float(rand() % 2000) / 1000.0 - 1.0, float(rand() % 2000) / 1000.0 - 1.0 };
+		activeObjects.push_back(engineObject({ float(rand() % baseRes.x), float(rand() % baseRes.y) , 100, 100 }, loadTex("resource/test2.png"), rand() % 360, true, SDL_FLIP_NONE, float(rand() % 1000) / 1000.0 + 0.5, tempPoint, double(rand() % 20000) / 1000.0 - 10.0));
+	}
 
 	return true;
 }
