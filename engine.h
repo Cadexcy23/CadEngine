@@ -1,20 +1,30 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_image.h>
+#include <SDL3/SDL_ttf.h>
 #include <vector>
+#include <functional>
 
 
 static struct Engine {
 	static bool quit;
 	static bool showFPS;
+	static bool showDebug;
+	static int engineState;
+	enum engineStates {
+		STATE_DEFAULT,
+		STATE_PAUSE,
+	};
 	static SDL_Point resolution;
 	static SDL_FPoint mousePos;
 	static std::vector<int> mouseStates;
 	static std::vector<int> keyStates;
 	static std::vector<int> wheelStates;
-	
+	static float deltaSeconds;
+
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 	static void controller();
+	static TTF_Font* loadFont(const char* path, int size);
 	static SDL_Texture* loadTex(const char* file);
 	static void drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color = { 255, 255, 255, 255 });
 	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = true);
@@ -23,7 +33,7 @@ static struct Engine {
 
 
 	struct engineObject {
-		SDL_Texture* tex; //make this a vector/atlas for animation/states
+		SDL_Texture* tex;
 		bool centered;
 		SDL_FlipMode flip;
 		float scale;
@@ -31,27 +41,28 @@ static struct Engine {
 		SDL_FPoint vel;
 		double rot;
 		double spin;
-		//layer (sort the vector of these by this b4 render)
+		int depth;
+		std::vector<std::function<void(engineObject* ent)>> drawFuncs;
+		std::vector<std::function<void(engineObject* ent)>> updateFuncs;
 
-		void draw() const //replace with a vector of attached draw funcs
+		void draw()
 		{
-			drawTex(tex, hull, rot, centered, flip, scale);
+			for (auto& func : drawFuncs) {
+				func(this);
+			}
 		}
-		void update()//replace with a vector of attached update funcs
+		void update()
 		{
-			hull.x += vel.x;
-			hull.y += vel.y;
-			vel.x -= vel.x / 1000;
-			vel.y -= vel.y / 1000;
-
-			rot += spin;
-			spin -= spin / 1000;
+			for (auto& func : updateFuncs) {
+				func(this);
+			}
 		}
 
-
-		//vector of custom rendering functs
-
-		engineObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0, bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0, SDL_FPoint vel = {0, 0}, double spin = 0)
-			: hull(hull), tex(tex), rot(rot), centered(centered), flip(flip), scale(scale), vel(vel), spin(spin){}
+		engineObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
+			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
+			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
+			: hull(hull), tex(tex), rot(rot),
+			centered(centered), flip(flip), scale(scale),
+			vel(vel), spin(spin), depth(depth) {}
 	};
 };
