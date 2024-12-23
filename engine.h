@@ -25,6 +25,7 @@ static struct Engine {
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 	static void controller();
 	static TTF_Font* loadFont(const char* path, int size);
+	static SDL_Texture* loadText(const char* text, TTF_Font* font, SDL_Color color);
 	static SDL_Texture* loadTex(const char* file);
 	static void drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color = { 255, 255, 255, 255 });
 	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = true);
@@ -38,15 +39,20 @@ static struct Engine {
 		SDL_FlipMode flip;
 		float scale;
 		SDL_FRect hull;
-		SDL_FPoint vel;
+		SDL_FPoint vel;// remove
 		double rot;
-		double spin;
+		double spin;// remove
 		int depth;
+		bool drawDefault;
+		bool drawFlag;
+		bool updateFlag;
 		std::vector<std::function<void(engineObject* ent)>> drawFuncs;
 		std::vector<std::function<void(engineObject* ent)>> updateFuncs;
 
 		void draw()
 		{
+			if(drawDefault)
+				drawTex(tex, hull, rot, centered, flip, scale);
 			for (auto& func : drawFuncs) {
 				func(this);
 			}
@@ -63,6 +69,45 @@ static struct Engine {
 			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
 			: hull(hull), tex(tex), rot(rot),
 			centered(centered), flip(flip), scale(scale),
-			vel(vel), spin(spin), depth(depth) {}
+			vel(vel), spin(spin), depth(depth),
+			drawDefault(true), drawFlag(true), updateFlag(true) {}
+	};
+
+	struct HUDElement { //remove?
+		SDL_Texture* tex;
+		bool centered;
+		SDL_FlipMode flip;
+		float scale;
+		SDL_FRect hull;
+		double rot;
+		int depth;
+		bool drawDefault;
+		bool drawFlag;
+		bool updateFlag;
+		std::vector<std::function<void(HUDElement* ent)>> drawFuncs;
+		std::vector<std::function<void(HUDElement* ent)>> updateFuncs;
+
+		void draw()
+		{
+			if (drawDefault)
+				drawTex(tex, hull, rot, centered, flip, scale);
+			for (auto& func : drawFuncs) {
+				func(this);
+			}
+		}
+		void update()
+		{
+			for (auto& func : updateFuncs) {
+				func(this);
+			}
+		}
+
+		HUDElement(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
+			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
+			int depth = 0)
+			: hull(hull), tex(tex), rot(rot),
+			centered(centered), flip(flip), scale(scale),
+			depth(depth),
+			drawDefault(true), drawFlag(true), updateFlag(true) {}
 	};
 };

@@ -11,6 +11,7 @@ SDL_Texture* screenTex;
 static SDL_Point baseRes = { 1920, 1080 };
 SDL_Event event;
 std::vector<Engine::engineObject> activeObjects;
+std::vector<Engine::HUDElement> activeElements;
 std::vector<std::pair<const char*, SDL_Texture*>> activeTextures;
 std::vector<std::pair<const char*, TTF_Font*>> activeFonts;
 Uint64 lastUpdateTime;
@@ -180,6 +181,13 @@ void updateObjects()
 	}
 }
 
+void updateElements()
+{
+	for (auto& ele : activeElements) {
+		ele.update();
+	}
+}
+
 void Engine::controller()
 {
 	while (SDL_PollEvent(&event)) {
@@ -219,6 +227,7 @@ void Engine::controller()
 	readKeyboard();
 
 	updateObjects();
+	updateElements();
 
 	profileUpdate();
 }
@@ -246,6 +255,39 @@ TTF_Font* Engine::loadFont(const char* path, int size)
 	activeFonts.push_back({ path, font });
 
 	return font;
+}
+
+SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
+{
+	//Check if we already have this text loaded
+	for (const auto& tex : activeTextures)
+	{
+		//If we already have the text loaded just return it
+		if (tex.first == text + int(font) + color.r + color.g + color.b + color.a) //add color to this aswell
+			return tex.second; //MAYBE have this add a timer for when this was last used so we can clear it
+	}
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = TTF_RenderText_Blended(font, text, NULL, color);
+	if (loadedSurface == NULL)
+	{
+		printf("Unable to load image %s! SDL_image Error: %s\n", text, SDL_GetError());
+		return NULL;
+	}
+	//Create texture from surface pixels
+	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+	if (newTexture == NULL)
+	{
+		printf("Unable to create texture from %s! SDL Error: %s\n", text, SDL_GetError());
+		return NULL;
+	}
+	//Get rid of old loaded surface
+	SDL_DestroySurface(loadedSurface);
+
+	//Add tex to our list of loaded textures
+	activeTextures.push_back({ text + int(font) + color.r + color.g + color.b + color.a, newTexture });
+
+	return newTexture;
 }
 
 SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
@@ -331,6 +373,13 @@ void renderObjects()
 	}
 }
 
+void renderElements()
+{
+	for (auto& ele : activeElements) {
+		ele.draw();
+	}
+}
+
 void renderScreen() // would having a second renderer for just doing this part make faster?
 {
 	//set renderr to the real window again
@@ -348,11 +397,10 @@ void Engine::draw()
 
 	//Render all entities
 	renderObjects();
+	renderElements();
 
 	//TEMP ZONE
-	SDL_Surface* tempSurface = TTF_RenderText_Blended(activeFonts[0].second, "This is causing a memory leak!", NULL, {255, 255, 255, 255});
-	SDL_Texture* tempTex = SDL_CreateTextureFromSurface(renderer, tempSurface);
-	drawTex(tempTex, { float(baseRes.x/2), float(baseRes.y / 2), 1920, 300 });
+	
 
 	//Run final render
 	renderScreen();
@@ -418,8 +466,6 @@ bool initRenderer()
 	return true;
 }
 
-//bool initImage()
-
 //bool initMixer()
 
 bool initFont()
@@ -457,11 +503,7 @@ bool initController()
 }
 
 //TEMP FUNCs
-void tempDrawFunc(Engine::engineObject* ent)
-{
-	Engine::drawTex(ent->tex, ent->hull, ent->rot, ent->centered, ent->flip, ent->scale);
-}
-
+//ENGINE OBJECTS
 void tempUpdateFunc(Engine::engineObject* ent)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
@@ -531,6 +573,21 @@ void keyboardControl(Engine::engineObject* ent)
 		}
 	}
 }
+//HUD ELEMENTS
+void testDrawFuncEle(Engine::HUDElement* ele)
+{
+	Engine::drawTex(ele->tex, { ele->hull.x - 100,ele->hull.y, ele->hull.w, ele->hull.h }, ele->rot, ele->centered, ele->flip, ele->scale);
+	Engine::drawTex(ele->tex, { ele->hull.x + 100,ele->hull.y, ele->hull.w, ele->hull.h }, ele->rot, ele->centered, ele->flip, ele->scale);
+	Engine::drawTex(ele->tex, { ele->hull.x,ele->hull.y - 100, ele->hull.w, ele->hull.h }, ele->rot, ele->centered, ele->flip, ele->scale);
+	Engine::drawTex(ele->tex, { ele->hull.x,ele->hull.y + 100, ele->hull.w, ele->hull.h }, ele->rot, ele->centered, ele->flip, ele->scale);
+}
+
+void colorChange(Engine::HUDElement* ele)
+{
+	Uint8 r, g, b;
+	SDL_GetTextureColorMod(ele->tex, &r, &g, &b);//this is BAD
+	SDL_SetTextureColorMod(ele->tex, r + rand() % 2, g + rand() % 2, b + rand() % 2);
+}
 //END TEMP FUNCs
 
 bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
@@ -563,7 +620,6 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 	}
 	sortObjects();
 	for (auto& obj : activeObjects) {
-		obj.drawFuncs.push_back(tempDrawFunc);
 		obj.updateFuncs.push_back(keepInScreen);
 		obj.updateFuncs.push_back(tempUpdateFunc);
 		obj.updateFuncs.push_back(keyboardControl);
@@ -571,6 +627,29 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 	activeObjects[0].updateFuncs.clear();
 
 	loadFont("resource/font/segoeuithibd.ttf", 128);
+	loadFont("resource/font/segoeuithisi.ttf", 128);
+
+	SDL_Texture* tex = loadText("CadEngine", activeFonts[0].second, { 255, 255, 255, 255 });
+	float w, h = 0;
+	SDL_GetTextureSize(tex ,&w, &h);
+	SDL_FRect hull = { 0, baseRes.y - h * 0.25, w, h };
+	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
+	activeElements.push_back(HUDElement(hull, tex));
+	activeElements[0].scale = 0.25;
+	activeElements[0].centered = false;
+	//activeElements[0].drawFuncs.push_back(testDrawFuncEle);
+	//activeElements[0].updateFuncs.push_back(colorChange);
+
+	//SDL_Texture* texB = loadText("This is NOT a virus!", activeFonts[0].second, { 255, 0, 0, 255 });
+	//float wB, hB = 0;
+	//SDL_GetTextureSize(texB, &wB, &hB);
+	//SDL_FRect hullB = { baseRes.x / 2, baseRes.y / 2, w, h };
+	//SDL_FPoint velB = { rand() % 1000 - 500, rand() % 1000 - 500 };
+	//activeElements.push_back(HUDElement(hullB, texB));
+	//activeElements[1].hull.y += 100;
+	//activeElements[1].scale = 0.75;
+	//activeElements[1].drawFuncs.push_back(testDrawFuncEle);
+	
 
 	return true;
 }
