@@ -1,20 +1,23 @@
 #include "engine.h"
 
-
 int main(int argc, char* argv[])
 {
-    //Initialize Engine 
-    Engine::initEngine();
+	//Initialize Engine 
+	Engine::initEngine();
 
-    while (!Engine::quit) {
-        //Process input
-        Engine::controller();
-        
-        //Add modules here
+	//Initialize modules
+	
 
-        //Render scene
-        Engine::draw();
-    }
+	while (!Engine::quit) {
+		//Process input
+		Engine::controller();
 
-    return 0;
+		//Update modules here
+		
+
+		//Render scene
+		Engine::draw();
+	}
+
+	return 0;
 }
