@@ -18,7 +18,7 @@ float updatesPS;
 float framesPS;
 //public
 bool Engine::quit = false;
-bool Engine::showFPS = false;
+bool Engine::showFPS = true;
 bool Engine::showDebug = false;
 int Engine::engineState = STATE_DEFAULT;
 SDL_Point Engine::baseRes = { 1920, 1080 };
@@ -28,7 +28,7 @@ std::vector<int> Engine::mouseStates;
 std::vector<int> Engine::keyStates;
 std::vector<int> Engine::wheelStates;
 float Engine::deltaSeconds;
-std::vector<Engine::engineObject> activeObjects;
+std::vector<std::shared_ptr<Engine::engineObject>> activeObjects;
 
 
 //Mixing
@@ -180,7 +180,7 @@ static void readKeyboard()
 void updateObjects()
 {
 	for (auto& obj : activeObjects) {
-		obj.update();
+		obj->update();
 	}
 }
 
@@ -342,16 +342,16 @@ void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, 
 
 //Objects
 
-Engine::engineObject* Engine::loadObject(Engine::engineObject obj)
+std::shared_ptr<Engine::engineObject> Engine::registerObject(std::shared_ptr<Engine::engineObject> obj)//maybe pointer? myabe make this more of a register object
 {
 	objectsModified = true;
 	activeObjects.push_back(obj);
-	return &activeObjects.back();
+	return activeObjects.back();
 }
 
-bool compDepth(Engine::engineObject a, Engine::engineObject b)
+bool compDepth(std::shared_ptr<Engine::engineObject> a, std::shared_ptr<Engine::engineObject> b)
 {
-	return a.depth > b.depth;
+	return a->depth > b->depth;
 }
 
 void sortObjects()
@@ -368,7 +368,7 @@ void renderObjects()
 		objectsModified = false;
 	}
 	for (auto& obj : activeObjects) {
-		obj.draw();
+		obj->draw();
 	}
 }
 

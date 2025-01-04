@@ -4,6 +4,7 @@
 #include <SDL3/SDL_ttf.h>
 #include <vector>
 #include <functional>
+#include <memory>
 
 
 static class Engine {
@@ -35,46 +36,48 @@ public:
 	static void drawTex(SDL_Texture* tex, SDL_FRect rect, double rot = 0.0, bool center = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0);
 	static void draw();
 
-	struct engineObject {
+	struct engineObject : public std::enable_shared_from_this<engineObject> {
 		SDL_Texture* tex;
 		bool centered;
 		SDL_FlipMode flip;
 		float scale;
 		SDL_FRect hull;
-		SDL_FPoint vel;// remove
 		double rot;
-		double spin;// remove
 		int depth;
 		bool drawDefault;
 		bool drawFlag;
 		bool updateFlag;
-		std::vector<std::function<void(engineObject* ent)>> drawFuncs;
-		std::vector<std::function<void(engineObject* ent)>> updateFuncs;
+		std::vector<std::function<void(std::shared_ptr<Engine::engineObject> obj)>> drawFuncs;
+		std::vector<std::function<void(std::shared_ptr<Engine::engineObject> obj)>> updateFuncs;
 
 		void draw()
 		{
 			if (drawDefault)
 				drawTex(tex, hull, rot, centered, flip, scale);
 			for (auto& func : drawFuncs) {
-				func(this);
+				func(shared_from_this());
 			}
 		}
 		void update()
 		{
 			for (auto& func : updateFuncs) {
-				func(this);
+				func(shared_from_this());
 			}
 		}
 
 		engineObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
 			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
-			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
+			int depth = 0)
 			: hull(hull), tex(tex), rot(rot),
 			centered(centered), flip(flip), scale(scale),
-			vel(vel), spin(spin), depth(depth),
+			depth(depth),
 			drawDefault(true), drawFlag(true), updateFlag(true) {}
+
+		virtual ~engineObject() {}
 	};
 
-	static Engine::engineObject* loadObject(Engine::engineObject obj);
+
+
+	static std::shared_ptr<Engine::engineObject> registerObject(std::shared_ptr<Engine::engineObject> obj);
 
 };
