@@ -8,8 +8,6 @@ public:
 	{
 		SDL_FPoint vel;
 		double spin;
-		/*std::vector<std::function<void(velObject* obj)>> drawFuncs;
-		std::vector<std::function<void(velObject* obj)>> updateFuncs;*/
 
 		velObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
 			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,

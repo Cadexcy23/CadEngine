@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <random>
+#include <string>
 #include "engine.h"
 
 //private
@@ -9,8 +10,8 @@ SDL_Renderer* renderer;
 SDL_Window* window;
 SDL_Texture* screenTex;
 SDL_Event event;
-std::vector<std::pair<const char*, SDL_Texture*>> activeTextures;
-std::vector<std::pair<const char*, TTF_Font*>> activeFonts;
+std::vector<std::pair<std::string, SDL_Texture*>> activeTextures;
+std::vector<std::pair<std::string, TTF_Font*>> activeFonts;
 bool objectsModified = true;
 Uint64 lastUpdateTime;
 float deltaTime;
@@ -18,22 +19,247 @@ float updatesPS;
 float framesPS;
 //public
 bool Engine::quit = false;
-bool Engine::showFPS = true;
-bool Engine::showDebug = false;
+bool Engine::showFPS = false;
+Uint32 Engine::debugLevel = 0;
 int Engine::engineState = STATE_DEFAULT;
-SDL_Point Engine::baseRes = { 1920, 1080 };
-SDL_Point Engine::resolution = { 1920 / 2, 1080 / 2 };
+SDL_Point Engine::baseRes = { 1920 / 1, 1080 / 1 };
+SDL_Point Engine::windowRes = { 1920 / 2, 1080 / 2 };
+SDL_FPoint Engine::resScale = { float(Engine::baseRes.x) / float(Engine::windowRes.x), float(Engine::baseRes.y) / float(Engine::windowRes.y) };
+SDL_ScaleMode Engine::scaleMode = SDL_SCALEMODE_LINEAR;
 SDL_FPoint Engine::mousePos = { 0, 0 };
 std::vector<int> Engine::mouseStates;
 std::vector<int> Engine::keyStates;
 std::vector<int> Engine::wheelStates;
 float Engine::deltaSeconds;
 std::vector<std::shared_ptr<Engine::engineObject>> activeObjects;
+std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
 
 
 //Mixing
 
+//Rendering
+SDL_Point Engine::setResolution(SDL_Point res)
+{
+	SDL_Point oldRes = windowRes;
+	windowRes = res;
+	SDL_SetWindowSize(window, windowRes.x, windowRes.y);
+	Engine::resScale = { float(Engine::baseRes.x) / float(Engine::windowRes.x), float(Engine::baseRes.y) / float(Engine::windowRes.y) };
+	return oldRes;
+}
+
+bool Engine::toggleVsync()
+{
+	int syncState;
+	SDL_GetRenderVSync(renderer, &syncState);
+	return SDL_SetRenderVSync(renderer, !syncState);
+}
+
+TTF_Font* Engine::loadFont(const char* path, int size)
+{
+	//Check if we already have this font loaded
+	for (const auto& font : activeFonts)
+	{
+		//If we already have the texture loaded just return it
+		if (font.first == path)
+			return font.second;
+	}
+
+	TTF_Font* font = TTF_OpenFont(path, size);
+	if (font == NULL)
+	{
+		printf("Failed to load font! SDL_ttf Error: %s\n", SDL_GetError());
+		return NULL;
+	}
+
+	//Add font to our list of loaded textures
+	activeFonts.push_back({ path, font });
+
+	return font;
+}
+
+SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
+{
+	//Check if we already have this text loaded
+	for (const auto& tex : activeTextures)
+	{
+		//If we already have the text loaded just return it
+		if (tex.first == std::string(text) + std::to_string(int(font)) + std::to_string(color.r) + std::to_string(color.g) + std::to_string(color.b) + std::to_string(color.a))
+			return tex.second;
+	}
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = TTF_RenderText_Blended(font, text, NULL, color);
+	if (loadedSurface == NULL)
+	{
+		printf("Unable to load image %s! SDL_image Error: %s\n", text, SDL_GetError());
+		return NULL;
+	}
+	//Create texture from surface pixels
+	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+	if (newTexture == NULL)
+	{
+		printf("Unable to create texture from %s! SDL Error: %s\n", text, SDL_GetError());
+		return NULL;
+	}
+	//Get rid of old loaded surface
+	SDL_DestroySurface(loadedSurface);
+
+	//Add tex to our list of loaded textures
+	activeTextures.push_back({ std::string(text) + std::to_string(int(font)) + std::to_string(color.r) + std::to_string(color.g) + std::to_string(color.b) + std::to_string(color.a), newTexture });
+
+	return newTexture;
+}
+
+SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
+{
+	//Check if we already have this texture loaded
+	for (const auto& tex : activeTextures)
+	{
+		//If we already have the texture loaded just return it
+		if (tex.first == path)
+			return tex.second;
+	}
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = IMG_Load(path);
+	if (loadedSurface == NULL)
+	{
+		printf("Unable to load image %s! SDL_image Error: %s\n", path, SDL_GetError());
+		return NULL;
+	}
+	//Create texture from surface pixels
+	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+	if (newTexture == NULL)
+	{
+		printf("Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError());
+		return NULL;
+	}
+	//Get rid of old loaded surface
+	SDL_DestroySurface(loadedSurface);
+
+	//Set scale mode for texture
+	SDL_SetTextureScaleMode(newTexture, scaleMode);
+
+	//Add tex to our list of loaded textures
+	activeTextures.push_back({ path, newTexture });
+
+	return newTexture;
+}
+
+void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
+{
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
+}
+
+void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
+{
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	if (fill)
+		SDL_RenderFillRect(renderer, &rect);
+	else
+		SDL_RenderRect(renderer, &rect);
+}
+
+void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale)
+{
+	SDL_FRect newRect = rect;
+	newRect.w *= scale;
+	newRect.h *= scale;
+	switch (center)
+	{
+	case true:
+		newRect.x -= newRect.w / 2;
+		newRect.y -= newRect.h / 2;
+		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		break;
+	case false:
+		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		break;
+	}
+}
+
+//Objects
+std::shared_ptr<Engine::engineObject> Engine::addObject(std::shared_ptr<Engine::engineObject> obj)//maybe pointer? myabe make this more of a register object
+{
+	addObjects.push_back(obj);
+	return addObjects.back();
+}
+
+std::shared_ptr<Engine::engineObject> registerObject(std::shared_ptr<Engine::engineObject> obj)//maybe pointer? myabe make this more of a register object
+{
+	objectsModified = true;
+	activeObjects.push_back(obj);
+	return activeObjects.back();
+}
+
+void removeObject(std::shared_ptr<Engine::engineObject> obj)
+{
+	auto it = std::remove(activeObjects.begin(), activeObjects.end(), obj);
+	activeObjects.erase(it, activeObjects.end());
+}
+
+void Engine::removeAllObjects()
+{
+	for (auto& obj : activeObjects) {
+		obj->remove = true;
+	}
+}
+
+bool compDepth(std::shared_ptr<Engine::engineObject> a, std::shared_ptr<Engine::engineObject> b)
+{
+	return a->depth > b->depth;
+}
+
+void sortObjects()
+{
+	std::sort(activeObjects.begin(), activeObjects.end(), compDepth);
+	//printf("Sorted\n");
+}
+
+void renderObjects()
+{
+	if (objectsModified)
+	{
+		sortObjects();
+		objectsModified = false;
+	}
+	for (auto& obj : activeObjects) {
+		obj->draw();
+	}
+}
+
+void renderScreen() // would having a second renderer for just doing this part make faster?
+{
+	//set renderr to the real window again
+	SDL_SetRenderTarget(renderer, NULL);
+	//render screenTex to it SCALED to the actual window size
+	SDL_RenderTexture(renderer, screenTex, NULL, NULL);
+	//reset renderer to the screentex
+	SDL_SetRenderTarget(renderer, screenTex);
+}
+
+void Engine::draw()
+{
+	//Clear screen
+	SDL_RenderClear(renderer);
+
+	//Render all entities
+	renderObjects();
+
+	//Run final render
+	renderScreen();
+
+	//Update screen
+	SDL_RenderPresent(renderer);
+}
+
 //Controlling
+
+float Engine::getFPS()
+{
+	return updatesPS;
+}
 
 void profileUpdate()
 {
@@ -66,6 +292,8 @@ void readMouse()
 {
 	//get mouse button state and position
 	Uint32 mouseState = SDL_GetMouseState(&Engine::mousePos.x, &Engine::mousePos.y);
+	Engine::mousePos.x *= Engine::resScale.x;
+	Engine::mousePos.y *= Engine::resScale.y;
 
 	//loop through each button on the mouse
 	for (int i = 0; i < Engine::mouseStates.size(); i++)
@@ -179,8 +407,21 @@ static void readKeyboard()
 
 void updateObjects()
 {
+	std::vector<std::shared_ptr<Engine::engineObject>> remObjs = {};
 	for (auto& obj : activeObjects) {
 		obj->update();
+		if (obj->remove)
+			remObjs.push_back(obj);
+	}
+	while (remObjs.size() > 0)
+	{
+		removeObject(remObjs.back());
+		remObjs.pop_back();
+	}
+	while (addObjects.size() > 0)
+	{
+		registerObject(addObjects.back());
+		addObjects.pop_back();
 	}
 }
 
@@ -209,194 +450,6 @@ void Engine::controller()
 	profileUpdate();
 }
 
-//Rendering
-
-bool Engine::toggleVsync()
-{
-	int syncState;
-	SDL_GetRenderVSync(renderer, &syncState);
-	return SDL_SetRenderVSync(renderer, !syncState);
-}
-
-TTF_Font* Engine::loadFont(const char* path, int size)
-{
-	//Check if we already have this font loaded
-	for (const auto& font : activeFonts)
-	{
-		//If we already have the texture loaded just return it
-		if (font.first == path)
-			return font.second;
-	}
-
-	TTF_Font* font = TTF_OpenFont(path, size);
-	if (font == NULL)
-	{
-		printf("Failed to load font! SDL_ttf Error: %s\n", SDL_GetError());
-		return NULL;
-	}
-
-	//Add font to our list of loaded textures
-	activeFonts.push_back({ path, font });
-
-	return font;
-}
-
-SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
-{
-	//Check if we already have this text loaded
-	for (const auto& tex : activeTextures)
-	{
-		//If we already have the text loaded just return it
-		if (tex.first == text + int(font) + color.r + color.g + color.b + color.a) //add color to this aswell
-			return tex.second; //MAYBE have this add a timer for when this was last used so we can clear it
-	}
-
-	//Load image at specified path
-	SDL_Surface* loadedSurface = TTF_RenderText_Blended(font, text, NULL, color);
-	if (loadedSurface == NULL)
-	{
-		printf("Unable to load image %s! SDL_image Error: %s\n", text, SDL_GetError());
-		return NULL;
-	}
-	//Create texture from surface pixels
-	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
-	if (newTexture == NULL)
-	{
-		printf("Unable to create texture from %s! SDL Error: %s\n", text, SDL_GetError());
-		return NULL;
-	}
-	//Get rid of old loaded surface
-	SDL_DestroySurface(loadedSurface);
-
-	//Add tex to our list of loaded textures
-	activeTextures.push_back({ text + int(font) + color.r + color.g + color.b + color.a, newTexture });
-
-	return newTexture;
-}
-
-SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
-{
-	//Check if we already have this texture loaded
-	for (const auto& tex : activeTextures)
-	{
-		//If we already have the texture loaded just return it
-		if (tex.first == path)
-			return tex.second;
-	}
-
-	//Load image at specified path
-	SDL_Surface* loadedSurface = IMG_Load(path);
-	if (loadedSurface == NULL)
-	{
-		printf("Unable to load image %s! SDL_image Error: %s\n", path, SDL_GetError());
-		return NULL;
-	}
-	//Create texture from surface pixels
-	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
-	if (newTexture == NULL)
-	{
-		printf("Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError());
-		return NULL;
-	}
-	//Get rid of old loaded surface
-	SDL_DestroySurface(loadedSurface);
-
-	//Add tex to our list of loaded textures
-	activeTextures.push_back({ path, newTexture });
-
-	return newTexture;
-}
-
-void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
-{
-	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-	SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
-}
-
-void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
-{
-	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-	if (fill)
-		SDL_RenderFillRect(renderer, &rect);
-	else
-		SDL_RenderRect(renderer, &rect);
-}
-
-void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale)
-{
-	SDL_FRect newRect = rect;
-	newRect.w *= scale;
-	newRect.h *= scale;
-	switch (center)
-	{
-	case true:
-		newRect.x -= newRect.w / 2;
-		newRect.y -= newRect.h / 2;
-		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
-		break;
-	case false:
-		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
-		break;
-	}
-}
-
-//Objects
-
-std::shared_ptr<Engine::engineObject> Engine::registerObject(std::shared_ptr<Engine::engineObject> obj)//maybe pointer? myabe make this more of a register object
-{
-	objectsModified = true;
-	activeObjects.push_back(obj);
-	return activeObjects.back();
-}
-
-bool compDepth(std::shared_ptr<Engine::engineObject> a, std::shared_ptr<Engine::engineObject> b)
-{
-	return a->depth > b->depth;
-}
-
-void sortObjects()
-{
-	std::sort(activeObjects.begin(), activeObjects.end(), compDepth);
-	//printf("Sorted\n");
-}
-
-void renderObjects()
-{
-	if (objectsModified)
-	{
-		sortObjects();
-		objectsModified = false;
-	}
-	for (auto& obj : activeObjects) {
-		obj->draw();
-	}
-}
-
-void renderScreen() // would having a second renderer for just doing this part make faster?
-{
-	//set renderr to the real window again
-	SDL_SetRenderTarget(renderer, NULL);
-	//render screenTex to it SCALED to the actual window size
-	SDL_RenderTexture(renderer, screenTex, NULL, NULL);
-	//reset renderer to the screentex
-	SDL_SetRenderTarget(renderer, screenTex);
-}
-
-void Engine::draw()
-{
-	//Clear screen
-	SDL_RenderClear(renderer);
-
-	//Render all entities
-	renderObjects();
-
-	//Run final render
-	renderScreen();
-
-	//Update screen
-	SDL_RenderPresent(renderer);
-}
-
 //Initialization
 
 bool initSDL()
@@ -414,7 +467,7 @@ bool initSDL()
 
 bool initWindow(const char* title = "CadEngine", SDL_WindowFlags flags = NULL)
 {
-	window = SDL_CreateWindow(title, Engine::resolution.x, Engine::resolution.y, flags);
+	window = SDL_CreateWindow(title, Engine::windowRes.x, Engine::windowRes.y, flags);
 	SDL_Surface* icon = IMG_Load("Resource/icon.png");
 	SDL_SetWindowIcon(window, icon);
 	SDL_DestroySurface(icon);
@@ -439,8 +492,8 @@ bool initRenderer()
 	}
 	//Initialize renderer color
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	//Initialize renderer blend mode
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
 	//Set Vsync
 	SDL_SetRenderVSync(renderer, 1);
 

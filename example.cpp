@@ -1,30 +1,22 @@
 #include "engine.h"
+#include "example.h"
+#include <string>
 
 //EXAMPLE CODE
-#include "example.h"
-void engineControls()
-{
-	//TEMP ZONE
-	if (Engine::keyStates[SDL_SCANCODE_ESCAPE])
-		Engine::quit = true;
-	if (Engine::keyStates[SDL_SCANCODE_V] == 1)
-	{
-		Engine::toggleVsync();
-	}
-	if (Engine::keyStates[SDL_SCANCODE_P] == 1)
-	{
-		if (Engine::engineState != Engine::STATE_PAUSE)
-			Engine::engineState = Engine::STATE_PAUSE;
-		else
-			Engine::engineState = Engine::STATE_DEFAULT;
-	}
-}
+std::vector<std::shared_ptr<Example::velObject>> objs;
+
+
 //ENGINE OBJECTS FUNCS
+void quitProgram()
+{
+	Engine::quit = true;
+}
+
 void tempUpdateFunc(std::shared_ptr<Engine::engineObject> obj)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
 	{
-		//get the thing blah blah
+		//get downcast object
 		auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
 
 		obj->hull.x += devObj->vel.x * Engine::deltaSeconds;
@@ -105,21 +97,51 @@ void keyboardControl(std::shared_ptr<Engine::engineObject> obj)
 	}
 }
 
-void exampleInit()
+void moveToMouse(std::shared_ptr<Engine::engineObject> obj)
 {
-	//TEMP ZONE
-	std::shared_ptr<Engine::engineObject> bg = Engine::registerObject(std::make_shared<Engine::engineObject>(Engine::engineObject({ 0, 0, 1920, 1080 }, Engine::loadTex("resource/bg.png"), 0, false)));
-	bg->depth = 1;
+	obj->hull.x = Engine::mousePos.x;
+	obj->hull.y = Engine::mousePos.y;
+}
 
-	std::shared_ptr<Engine::engineObject> me = Engine::registerObject(std::make_shared<Engine::engineObject>(Engine::engineObject({ float(rand() % Engine::baseRes.x), float(rand() % Engine::baseRes.y) , 200, 200 }, Engine::loadTex("resource/icon.png"))));
-	me->depth = -1;
-	me->updateFuncs.push_back(keepInScreen);
-	me->updateFuncs.push_back(keyboardControl);
-
-	for (int i = 0; i < 1000; i++)
+void engineControls()
+{
+	if (Engine::keyStates[SDL_SCANCODE_ESCAPE])
+		Engine::quit = true;
+	if (Engine::keyStates[SDL_SCANCODE_1] == 1)
 	{
-		SDL_FRect hull = { float(rand() % Engine::baseRes.x), float(rand() % Engine::baseRes.y), 100, 100 };
+		Engine::toggleVsync();
+	}
+	if (Engine::keyStates[SDL_SCANCODE_2] == 1)
+	{
+		if (Engine::showFPS)
+			Engine::showFPS = false;
+		else
+			Engine::showFPS = true;
+	}
+	if (Engine::keyStates[SDL_SCANCODE_3] == 1)
+	{
+		if (Engine::debugLevel > 0)
+			Engine::debugLevel = 0;
+		else
+			Engine::debugLevel++;
+	}
+	if (Engine::keyStates[SDL_SCANCODE_4] == 1)
+	{
+		if (Engine::engineState != Engine::STATE_PAUSE)
+			Engine::engineState = Engine::STATE_PAUSE;
+		else
+			Engine::engineState = Engine::STATE_DEFAULT;
+	}
+	if (Engine::keyStates[SDL_SCANCODE_P] == 1)
+	{
+		printf("Object count: %i\n", objs.size());
+	}
+	if (Engine::mouseStates[0])
+	{
 		SDL_Texture* tex = Engine::loadTex("resource/test2.png");
+		float w, h;
+		SDL_GetTextureSize(tex, &w, &h);
+		SDL_FRect hull = { Engine::mousePos.x, Engine::mousePos.y, w / 10, h / 10 };
 		SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
 		double rot = rand() % 360;
 		float scale = float(rand() % 1000) / 1000.0 + 0.5;
@@ -130,22 +152,62 @@ void exampleInit()
 		velObj->updateFuncs.push_back(keepInScreen);
 		velObj->updateFuncs.push_back(tempUpdateFunc);
 		velObj->updateFuncs.push_back(keyboardControl);
-		Engine::registerObject(velObj);
-
+		objs.push_back(velObj);
+		Engine::addObject(velObj);
 	}
+	if (Engine::mouseStates[2])
+	{
+		if (objs.size())
+		{
+			objs.back()->remove = true;
+			objs.pop_back();
+		}
+	}
+}
 
-	TTF_Font* bold = Engine::loadFont("resource/font/segoeuithibd.ttf", 128);
-	Engine::loadFont("resource/font/segoeuithisi.ttf", 128);
+void exampleInit()
+{
+	std::shared_ptr<Engine::engineObject> bg = Engine::addObject(std::make_shared<Engine::engineObject>(Engine::engineObject({ 0, 0, float(Engine::baseRes.x), float(Engine::baseRes.y) }, Engine::loadTex("resource/bg.png"), 0, false)));
+	bg->depth = 1;
+
+	std::shared_ptr<Engine::engineObject> me = Engine::addObject(std::make_shared<Engine::engineObject>(Engine::engineObject({ float(rand() % Engine::baseRes.x), float(rand() % Engine::baseRes.y) , 16, 16 }, Engine::loadTex("resource/icon.png"))));
+	me->depth = -1;
+	me->updateFuncs.push_back(moveToMouse);
+
+	TTF_Font* bold = Engine::loadFont("resource/font/segoeuithibd.ttf", 32);
+	Engine::loadFont("resource/font/segoeuithisi.ttf", 32);
 
 	SDL_Texture* tex = Engine::loadText("CadEngine", bold, { 255, 255, 255, 255 });
 	float w, h = 0;
 	SDL_GetTextureSize(tex, &w, &h);
-	SDL_FRect hull = { 0, Engine::baseRes.y - h * 0.25, w, h };
-	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
-	std::shared_ptr<Engine::engineObject> watermark = Engine::registerObject(std::make_shared<Engine::engineObject>(Engine::engineObject(hull, tex)));
-	watermark->scale = 0.25;
-	watermark->centered = false;
+	SDL_FRect hull = { 0, 0, w, h };
+	std::shared_ptr<Engine::engineObject> watermark = Engine::addObject(std::make_shared<Engine::engineObject>(Engine::engineObject(hull, tex, 0, false)));
 	watermark->depth = -1;
+
+	//quit button
+	SDL_Texture* quitTex = Engine::loadText("Quit", bold, { 255, 255, 255, 255 });
+	SDL_GetTextureSize(quitTex, &w, &h);
+	SDL_FRect quitHull = { Engine::baseRes.x - w, 0, w, h };
+	std::shared_ptr<Engine::buttonObject> quitButton = std::make_shared<Engine::buttonObject>(Engine::buttonObject(quitHull, quitTex, 0, false));
+	quitButton->onClick = quitProgram;
+	std::shared_ptr<Engine::engineObject> quitObject = Engine::addObject(quitButton);
+	quitObject->depth = -1;
+
+	//controls
+	SDL_Texture* conTex = Engine::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", bold, { 255, 255, 255, 255 });
+	SDL_GetTextureSize(conTex, &w, &h);
+	SDL_FRect conHull = { 0, Engine::baseRes.y - h, w, h };
+	std::shared_ptr<Engine::engineObject> conObj = std::make_shared<Engine::engineObject>(Engine::engineObject(conHull, conTex, 0, false));
+	conObj->depth = -1;
+	Engine::addObject(conObj);
+
+	//controls 2
+	SDL_Texture* conBTex = Engine::loadText("WASD - Steer Objects   Scroll Wheel - Adjust Object Size   Space - Speed Boost   P - Print Object Count", bold, { 255, 255, 255, 255 });
+	SDL_GetTextureSize(conBTex, &w, &h);
+	SDL_FRect conBHull = { 0, Engine::baseRes.y - h - 40, w, h };
+	std::shared_ptr<Engine::engineObject> conBObj = std::make_shared<Engine::engineObject>(Engine::engineObject(conBHull, conBTex, 0, false));
+	conBObj->depth = -1;
+	Engine::addObject(conBObj);
 
 }
 //EXAMPLE CODE END
