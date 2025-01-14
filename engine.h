@@ -27,17 +27,18 @@ public:
 	static std::vector<int> wheelStates;
 	static float deltaSeconds;
 
+	static SDL_Texture* setRenderTarget(SDL_Texture* tex);
 	static SDL_Point setResolution(SDL_Point res);
 	static bool toggleVsync();
 	static TTF_Font* loadFont(const char* path, int size);
 	static SDL_Texture* loadText(const char* text, TTF_Font* font, SDL_Color color);
 	static SDL_Texture* loadTex(const char* file);
+	static SDL_Texture* loadTargetTex(SDL_Point size);
 	static void drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color = { 255, 255, 255, 255 });
 	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = true);
-	static void drawTex(SDL_Texture* tex, SDL_FRect rect, double rot = 0.0, bool center = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0);
+	static void drawTex(SDL_Texture* tex, SDL_FRect rect, double rot = 0.0, bool center = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0, SDL_FRect* chunk = NULL);
 	static void removeAllObjects();
 	static void draw();
-	static float getFPS();
 	static void controller();
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 
@@ -100,6 +101,15 @@ public:
 				return true;
 			}
 			return false;
+		}
+
+		void resetSize()
+		{
+			float w, h;
+			SDL_GetTextureSize(tex, &w, &h);
+			hull.w = w;
+			hull.h = h;
+			scale = 1;
 		}
 
 		virtual void draw()

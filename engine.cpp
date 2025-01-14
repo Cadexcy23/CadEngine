@@ -38,6 +38,13 @@ std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
 //Mixing
 
 //Rendering
+SDL_Texture* Engine::setRenderTarget(SDL_Texture* tex)
+{
+	SDL_Texture* lastTex = SDL_GetRenderTarget(renderer);
+	SDL_SetRenderTarget(renderer, tex);
+	return lastTex;
+}
+
 SDL_Point Engine::setResolution(SDL_Point res)
 {
 	SDL_Point oldRes = windowRes;
@@ -91,7 +98,7 @@ SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
 	SDL_Surface* loadedSurface = TTF_RenderText_Blended(font, text, NULL, color);
 	if (loadedSurface == NULL)
 	{
-		printf("Unable to load image %s! SDL_image Error: %s\n", text, SDL_GetError());
+		printf("Unable to load text %s! SDL_image Error: %s\n", text, SDL_GetError());
 		return NULL;
 	}
 	//Create texture from surface pixels
@@ -110,7 +117,7 @@ SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
 	return newTexture;
 }
 
-SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
+SDL_Texture* Engine::loadTex(const char* path)
 {
 	//Check if we already have this texture loaded
 	for (const auto& tex : activeTextures)
@@ -146,10 +153,24 @@ SDL_Texture* Engine::loadTex(const char* path) // add flag for target texture
 	return newTexture;
 }
 
+SDL_Texture* Engine::loadTargetTex(SDL_Point size)
+{
+	//Load texture with the target flag
+	SDL_Texture* newTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, size.x, size.y);
+
+	//Set scale mode for texture
+	SDL_SetTextureScaleMode(newTexture, scaleMode);
+
+	return newTexture;
+}
+
 void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
 {
+	Uint8 r, g, b, a;
+	SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderLine(renderer, start.x, start.y, end.x, end.y);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
 void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
@@ -161,7 +182,7 @@ void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
 		SDL_RenderRect(renderer, &rect);
 }
 
-void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale)
+void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale, SDL_FRect* chunk)
 {
 	SDL_FRect newRect = rect;
 	newRect.w *= scale;
@@ -171,10 +192,10 @@ void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, 
 	case true:
 		newRect.x -= newRect.w / 2;
 		newRect.y -= newRect.h / 2;
-		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		SDL_RenderTextureRotated(renderer, tex, chunk, &newRect, rot, NULL, flip);
 		break;
 	case false:
-		SDL_RenderTextureRotated(renderer, tex, NULL, &newRect, rot, NULL, flip);
+		SDL_RenderTextureRotated(renderer, tex, chunk, &newRect, rot, NULL, flip);
 		break;
 	}
 }
@@ -255,11 +276,6 @@ void Engine::draw()
 }
 
 //Controlling
-
-float Engine::getFPS()
-{
-	return updatesPS;
-}
 
 void profileUpdate()
 {
@@ -500,6 +516,9 @@ bool initRenderer()
 	//Create screen texture and set it as our render texture
 	screenTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, Engine::baseRes.x, Engine::baseRes.y);
 	SDL_SetRenderTarget(renderer, screenTex);
+
+	//Set scale mode for texture
+	SDL_SetTextureScaleMode(screenTex, Engine::scaleMode);
 
 	printf("Renderer initialized!\n");
 	return true;

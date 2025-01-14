@@ -7,6 +7,20 @@ std::vector<std::shared_ptr<Example::velObject>> objs;
 
 
 //ENGINE OBJECTS FUNCS
+void drawDebug(std::shared_ptr<Engine::engineObject> obj) //add this to the base engine
+{
+	if (Engine::debugLevel >= 2)
+	{
+
+		float w, h;
+		std::string camS = "OBJ Count: " + std::to_string(objs.size());
+		SDL_Texture* cam = Engine::loadText(camS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(cam, &w, &h);
+		Engine::drawTex(cam, { 0, h * 1, w, h }, 0, false);
+
+	}
+}
+
 void quitProgram()
 {
 	Engine::quit = true;
@@ -120,7 +134,7 @@ void engineControls()
 	}
 	if (Engine::keyStates[SDL_SCANCODE_3] == 1)
 	{
-		if (Engine::debugLevel > 0)
+		if (Engine::debugLevel > 1)
 			Engine::debugLevel = 0;
 		else
 			Engine::debugLevel++;
@@ -183,6 +197,7 @@ void exampleInit()
 	SDL_FRect hull = { 0, 0, w, h };
 	std::shared_ptr<Engine::engineObject> watermark = Engine::addObject(std::make_shared<Engine::engineObject>(Engine::engineObject(hull, tex, 0, false)));
 	watermark->depth = -1;
+	watermark->drawFuncs.push_back(drawDebug);
 
 	//quit button
 	SDL_Texture* quitTex = Engine::loadText("Quit", bold, { 255, 255, 255, 255 });
@@ -202,7 +217,7 @@ void exampleInit()
 	Engine::addObject(conObj);
 
 	//controls 2
-	SDL_Texture* conBTex = Engine::loadText("WASD - Steer Objects   Scroll Wheel - Adjust Object Size   Space - Speed Boost   P - Print Object Count", bold, { 255, 255, 255, 255 });
+	SDL_Texture* conBTex = Engine::loadText("WASD - Steer Objects   Scroll Wheel - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(conBTex, &w, &h);
 	SDL_FRect conBHull = { 0, Engine::baseRes.y - h - 40, w, h };
 	std::shared_ptr<Engine::engineObject> conBObj = std::make_shared<Engine::engineObject>(Engine::engineObject(conBHull, conBTex, 0, false));
