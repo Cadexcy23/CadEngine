@@ -21,7 +21,13 @@ public:
 	static SDL_Point windowRes;
 	static SDL_FPoint resScale;
 	static SDL_ScaleMode scaleMode;
+	static float zoom;
+	static SDL_FPoint camPos;
+	static SDL_FRect screenBounds;
+	static SDL_FPoint screenOffSet;
+	static double screenRotation;
 	static SDL_FPoint mousePos;
+	static SDL_FPoint rawMousePos;
 	static std::vector<int> mouseStates;
 	static std::vector<int> keyStates;
 	static std::vector<int> wheelStates;
@@ -35,7 +41,7 @@ public:
 	static SDL_Texture* loadTex(const char* file);
 	static SDL_Texture* loadTargetTex(SDL_Point size);
 	static void drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color = { 255, 255, 255, 255 });
-	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = true);
+	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = false, bool centered = false);
 	static void drawTex(SDL_Texture* tex, SDL_FRect rect, double rot = 0.0, bool center = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0, SDL_FRect* chunk = NULL);
 	static void removeAllObjects();
 	static void draw();
@@ -43,8 +49,10 @@ public:
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 
 	struct engineObject : public std::enable_shared_from_this<engineObject> {
-		SDL_Texture* tex;
+		std::vector<SDL_Texture*> tex;
+		int texIndex;
 		bool centered;
+		bool fixed;
 		SDL_FlipMode flip;
 		float scale;
 		SDL_FRect hull;
@@ -60,15 +68,27 @@ public:
 
 		void drawHull()
 		{
-			SDL_FRect bounds = getBounds();
+			SDL_FRect modHull = hull;
+			if (!fixed)
+			{
+				modHull.x -= camPos.x;
+				modHull.y -= camPos.y;
+				modHull.x *= zoom;
+				modHull.y *= zoom;
+				modHull.x += baseRes.x / 2;
+				modHull.y += baseRes.y / 2;
 
-			Engine::drawLine({ bounds.x, bounds.y }, { bounds.w, bounds.y });
-			Engine::drawLine({ bounds.w, bounds.y }, { bounds.w, bounds.h });
-			Engine::drawLine({ bounds.w, bounds.h }, { bounds.x, bounds.h });
-			Engine::drawLine({ bounds.x, bounds.h }, { bounds.x, bounds.y });
-
-			Engine::drawLine({ bounds.x, bounds.y }, { bounds.w, bounds.h });
-			Engine::drawLine({ bounds.x, bounds.h }, { bounds.w, bounds.y });
+				modHull.w *= scale * zoom;
+				modHull.h *= scale * zoom;
+			}
+			if (centered)
+			{
+				modHull.x -= modHull.w / 2;
+				modHull.y -= modHull.h / 2;
+			}
+			drawRect(modHull);
+			Engine::drawLine({ modHull.x, modHull.y }, { modHull.x + modHull.w, modHull.y + modHull.h });
+			Engine::drawLine({ modHull.x, modHull.y + modHull.h }, { modHull.x + modHull.w, modHull.y });
 		}
 
 		SDL_FRect getBounds()
@@ -93,10 +113,26 @@ public:
 			}
 		}
 
+		bool inScreen()
+		{
+			if (fixed)
+				return true;
+			SDL_FRect bounds = getBounds();
+			if (bounds.x <= Engine::screenBounds.w && bounds.w >= Engine::screenBounds.x &&
+				bounds.y <= Engine::screenBounds.h && bounds.h >= Engine::screenBounds.y)
+			{
+				return true;
+			}
+			return false;
+		}
+
 		bool mouseInBounds()
 		{
 			SDL_FRect bounds = getBounds();
-			if (mousePos.x >= bounds.x && mousePos.x <= bounds.w && mousePos.y >= bounds.y && mousePos.y <= bounds.h)
+			SDL_FPoint checkPoint = mousePos;
+			if (fixed)
+				checkPoint = rawMousePos;
+			if (checkPoint.x >= bounds.x && checkPoint.x <= bounds.w && checkPoint.y >= bounds.y && checkPoint.y <= bounds.h)
 			{
 				return true;
 			}
@@ -106,7 +142,7 @@ public:
 		void resetSize()
 		{
 			float w, h;
-			SDL_GetTextureSize(tex, &w, &h);
+			SDL_GetTextureSize(tex.front(), &w, &h);
 			hull.w = w;
 			hull.h = h;
 			scale = 1;
@@ -114,10 +150,25 @@ public:
 
 		virtual void draw()
 		{
-			if (drawFlag)
+			if (drawFlag && inScreen())
 			{
 				if (drawDefault)
-					drawTex(tex, hull, rot, centered, flip, scale);
+				{
+					SDL_FRect modHull = hull;
+					if (!fixed)
+					{
+						modHull.x -= camPos.x;
+						modHull.y -= camPos.y;
+						modHull.x *= zoom;
+						modHull.y *= zoom;
+						modHull.x += baseRes.x / 2;
+						modHull.y += baseRes.y / 2;
+
+						modHull.w *= zoom;
+						modHull.h *= zoom;
+					}
+					drawTex(tex[texIndex], modHull, rot, centered, flip, scale);
+				}
 				if (debugLevel)
 					drawHull();
 				for (auto& func : drawFuncs) {
@@ -137,12 +188,11 @@ public:
 		}
 
 		engineObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
-			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
+			bool centered = true, bool fixed = false, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
 			int depth = 0)
-			: hull(hull), tex(tex), rot(rot),
-			centered(centered), flip(flip), scale(scale),
-			depth(depth),
-			drawDefault(true), drawFlag(true), updateFlag(true), remove(false) {}
+			: hull(hull), tex{ tex }, rot(rot), centered(centered), fixed(fixed),
+			flip(flip), scale(scale), depth(depth),
+			drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0) {}
 
 		virtual ~engineObject() {}
 	};
@@ -162,10 +212,10 @@ public:
 		}
 
 		buttonObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
-			bool centered = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
+			bool centered = true, bool fixed = false, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
 			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
 			: engineObject(hull, tex, rot,
-				centered, flip, scale,
+				centered, fixed, flip, scale,
 				depth),
 			onClick(onClick) {}
 	};

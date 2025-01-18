@@ -26,7 +26,13 @@ SDL_Point Engine::baseRes = { 1920 / 1, 1080 / 1 };
 SDL_Point Engine::windowRes = { 1920 / 2, 1080 / 2 };
 SDL_FPoint Engine::resScale = { float(Engine::baseRes.x) / float(Engine::windowRes.x), float(Engine::baseRes.y) / float(Engine::windowRes.y) };
 SDL_ScaleMode Engine::scaleMode = SDL_SCALEMODE_LINEAR;
+float Engine::zoom = 1;
+SDL_FPoint Engine::camPos = { 0, 0 };
+SDL_FRect Engine::screenBounds = { 0, 0, 1920 / 1, 1080 / 1 };
+SDL_FPoint Engine::screenOffSet = { 0, 0 };
+double Engine::screenRotation = 0;
 SDL_FPoint Engine::mousePos = { 0, 0 };
+SDL_FPoint Engine::rawMousePos = { 0, 0 };
 std::vector<int> Engine::mouseStates;
 std::vector<int> Engine::keyStates;
 std::vector<int> Engine::wheelStates;
@@ -173,13 +179,21 @@ void Engine::drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color)
 	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
-void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill)
+void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill, bool centered)
 {
+	Uint8 r, g, b, a;
+	SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	if (centered)
+	{
+		rect.x -= rect.w / 2;
+		rect.y -= rect.h / 2;
+	}
 	if (fill)
 		SDL_RenderFillRect(renderer, &rect);
 	else
 		SDL_RenderRect(renderer, &rect);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
 
 void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale, SDL_FRect* chunk)
@@ -250,13 +264,14 @@ void renderObjects()
 	}
 }
 
-void renderScreen() // would having a second renderer for just doing this part make faster?
+void renderScreen()
 {
-	//set renderr to the real window again
+	//set renderer to the real window again
 	SDL_SetRenderTarget(renderer, NULL);
-	//render screenTex to it SCALED to the actual window size
-	SDL_RenderTexture(renderer, screenTex, NULL, NULL);
-	//reset renderer to the screentex
+	//render screenTex scaled to the actual window size
+	SDL_FRect screenRect = { Engine::screenOffSet.x, Engine::screenOffSet.y, Engine::windowRes.x, Engine::windowRes.y };
+	SDL_RenderTextureRotated(renderer, screenTex, NULL, &screenRect, Engine::screenRotation, NULL, SDL_FLIP_NONE);
+	//reset renderer to the screenTex
 	SDL_SetRenderTarget(renderer, screenTex);
 }
 
@@ -276,6 +291,14 @@ void Engine::draw()
 }
 
 //Controlling
+void updateScreenProperties()
+{
+	//Set the outer most edges of the map
+	Engine::screenBounds.x = Engine::camPos.x - (Engine::baseRes.x / 2) / Engine::zoom;
+	Engine::screenBounds.y = Engine::camPos.y - (Engine::baseRes.y / 2) / Engine::zoom;
+	Engine::screenBounds.w = Engine::camPos.x + (Engine::baseRes.x / 2) / Engine::zoom;
+	Engine::screenBounds.h = Engine::camPos.y + (Engine::baseRes.y / 2) / Engine::zoom;
+}
 
 void profileUpdate()
 {
@@ -307,9 +330,18 @@ void profileUpdate()
 void readMouse()
 {
 	//get mouse button state and position
-	Uint32 mouseState = SDL_GetMouseState(&Engine::mousePos.x, &Engine::mousePos.y);
-	Engine::mousePos.x *= Engine::resScale.x;
-	Engine::mousePos.y *= Engine::resScale.y;
+	Uint32 mouseState = SDL_GetMouseState(&Engine::rawMousePos.x, &Engine::rawMousePos.y);
+	Engine::rawMousePos.x *= Engine::resScale.x;
+	Engine::rawMousePos.y *= Engine::resScale.y;
+	Engine::mousePos.x = Engine::rawMousePos.x;
+	Engine::mousePos.y = Engine::rawMousePos.y;
+	//adjust mouse pos in relation to the camera pos and zoom
+	Engine::mousePos.x -= float(Engine::baseRes.x / 2);
+	Engine::mousePos.x /= Engine::zoom;
+	Engine::mousePos.x += Engine::camPos.x;
+	Engine::mousePos.y -= float(Engine::baseRes.y / 2);
+	Engine::mousePos.y /= Engine::zoom;
+	Engine::mousePos.y += Engine::camPos.y;
 
 	//loop through each button on the mouse
 	for (int i = 0; i < Engine::mouseStates.size(); i++)
@@ -464,6 +496,7 @@ void Engine::controller()
 	updateObjects();
 
 	profileUpdate();
+	updateScreenProperties();
 }
 
 //Initialization
