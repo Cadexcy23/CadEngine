@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <random>
-#include <string>
 #include "engine.h"
 
 //private
@@ -28,7 +27,7 @@ SDL_FPoint Engine::resScale = { float(Engine::baseRes.x) / float(Engine::windowR
 SDL_ScaleMode Engine::scaleMode = SDL_SCALEMODE_LINEAR;
 float Engine::zoom = 1;
 SDL_FPoint Engine::camPos = { 0, 0 };
-SDL_FRect Engine::screenBounds = { 0, 0, 1920 / 1, 1080 / 1 };
+SDL_FRect Engine::screenBounds = { 0, 0, baseRes.x, baseRes.y };
 SDL_FPoint Engine::screenOffSet = { 0, 0 };
 double Engine::screenRotation = 0;
 SDL_FPoint Engine::mousePos = { 0, 0 };
@@ -44,6 +43,15 @@ std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
 //Mixing
 
 //Rendering
+void Engine::clearTarget(SDL_Color color)
+{
+	Uint8 r, g, b, a;
+	SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	SDL_RenderClear(renderer);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+}
+
 SDL_Texture* Engine::setRenderTarget(SDL_Texture* tex)
 {
 	SDL_Texture* lastTex = SDL_GetRenderTarget(renderer);
@@ -117,20 +125,26 @@ SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
 	//Get rid of old loaded surface
 	SDL_DestroySurface(loadedSurface);
 
+	//Set scale mode for texture
+	SDL_SetTextureScaleMode(newTexture, scaleMode);
+
 	//Add tex to our list of loaded textures
 	activeTextures.push_back({ std::string(text) + std::to_string(int(font)) + std::to_string(color.r) + std::to_string(color.g) + std::to_string(color.b) + std::to_string(color.a), newTexture });
 
 	return newTexture;
 }
 
-SDL_Texture* Engine::loadTex(const char* path)
+SDL_Texture* Engine::loadTex(const char* path, bool unique)
 {
 	//Check if we already have this texture loaded
-	for (const auto& tex : activeTextures)
+	if (!unique)//Skip if we want a unique one
 	{
-		//If we already have the texture loaded just return it
-		if (tex.first == path)
-			return tex.second;
+		for (const auto& tex : activeTextures)
+		{
+			//If we already have the texture loaded just return it
+			if (tex.first == path)
+				return tex.second;
+		}
 	}
 
 	//Load image at specified path
@@ -275,6 +289,42 @@ void renderScreen()
 	SDL_SetRenderTarget(renderer, screenTex);
 }
 
+void drawDebug()
+{
+	if (Engine::debugLevel >= 2)
+	{
+		Engine::drawRect({ 0, 0, float(Engine::baseRes.x * .8), 15 * 6 }, { 0, 0, 0, 255 / 2 }, true);
+
+		float w, h;
+		std::string camS = "CamX: " + std::to_string(Engine::camPos.x) + " Y: " + std::to_string(Engine::camPos.y);
+		SDL_Texture* cam = Engine::loadText(camS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(cam, &w, &h);
+		h /= 3;
+		Engine::drawTex(cam, { 0, h * 1, w / 3, h }, 0, false);
+
+		std::string zoomS = "Zoom: " + std::to_string(Engine::zoom);
+		SDL_Texture* zoom = Engine::loadText(zoomS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(zoom, &w, NULL);
+		Engine::drawTex(zoom, { 0, h * 2, w / 3, h }, 0, false);
+
+		std::string rouseS = "Rouse X: " + std::to_string(Engine::rawMousePos.x) + " Y: " + std::to_string(Engine::rawMousePos.y);;
+		SDL_Texture* rouse = Engine::loadText(rouseS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(rouse, &w, NULL);
+		Engine::drawTex(rouse, { 0, h * 3, w / 3, h }, 0, false);
+
+		std::string mouseS = "Mouse X: " + std::to_string(Engine::mousePos.x) + " Y: " + std::to_string(Engine::mousePos.y);;
+		SDL_Texture* mouse = Engine::loadText(mouseS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(mouse, &w, NULL);
+		Engine::drawTex(mouse, { 0, h * 4, w / 3, h }, 0, false);
+
+		std::string screenBoundsS = "Screen Bounds: L: " + std::to_string(Engine::screenBounds.x) + " R: " + std::to_string(Engine::screenBounds.w)
+			+ " U: " + std::to_string(Engine::screenBounds.y) + " D: " + std::to_string(Engine::screenBounds.h);
+		SDL_Texture* screenBounds = Engine::loadText(screenBoundsS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+		SDL_GetTextureSize(screenBounds, &w, NULL);
+		Engine::drawTex(screenBounds, { 0, h * 5, w / 3, h }, 0, false);
+	}
+}
+
 void Engine::draw()
 {
 	//Clear screen
@@ -282,6 +332,9 @@ void Engine::draw()
 
 	//Render all entities
 	renderObjects();
+
+	//Render Debug window
+	drawDebug();
 
 	//Run final render
 	renderScreen();

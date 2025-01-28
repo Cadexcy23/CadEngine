@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <string>
 
 
 static class Engine {
@@ -33,12 +34,13 @@ public:
 	static std::vector<int> wheelStates;
 	static float deltaSeconds;
 
+	static void clearTarget(SDL_Color color = { 0,0,0,255 });
 	static SDL_Texture* setRenderTarget(SDL_Texture* tex);
 	static SDL_Point setResolution(SDL_Point res);
 	static bool toggleVsync();
 	static TTF_Font* loadFont(const char* path, int size);
 	static SDL_Texture* loadText(const char* text, TTF_Font* font, SDL_Color color);
-	static SDL_Texture* loadTex(const char* file);
+	static SDL_Texture* loadTex(const char* file, bool unique = false);
 	static SDL_Texture* loadTargetTex(SDL_Point size);
 	static void drawLine(SDL_FPoint start, SDL_FPoint end, SDL_Color color = { 255, 255, 255, 255 });
 	static void drawRect(SDL_FRect rect, SDL_Color color = { 255, 255, 255, 255 }, bool fill = false, bool centered = false);
@@ -66,8 +68,17 @@ public:
 		std::vector<std::function<void(std::shared_ptr<Engine::engineObject> obj)>> updateFuncs;
 
 
-		void drawHull()
+		virtual void drawHull()
 		{
+			SDL_Color color = { 255, 255, 255, 255 };
+			if (fixed)
+				color = { 255, 0, 0, 255 };
+			if (centered)
+				color = { 0, 255, 0, 255 };
+			if (fixed && centered)
+				color = { 0, 0, 255, 255 };
+			if (mouseInBounds())
+				color.a = 255 / 2;
 			SDL_FRect modHull = hull;
 			if (!fixed)
 			{
@@ -86,9 +97,9 @@ public:
 				modHull.x -= modHull.w / 2;
 				modHull.y -= modHull.h / 2;
 			}
-			drawRect(modHull);
-			Engine::drawLine({ modHull.x, modHull.y }, { modHull.x + modHull.w, modHull.y + modHull.h });
-			Engine::drawLine({ modHull.x, modHull.y + modHull.h }, { modHull.x + modHull.w, modHull.y });
+			drawRect(modHull, color);
+			Engine::drawLine({ modHull.x, modHull.y }, { modHull.x + modHull.w - 1, modHull.y + modHull.h - 1 }, color);
+			Engine::drawLine({ modHull.x, modHull.y + modHull.h - 1 }, { modHull.x + modHull.w - 1, modHull.y }, color);
 		}
 
 		SDL_FRect getBounds()
@@ -126,7 +137,7 @@ public:
 			return false;
 		}
 
-		bool mouseInBounds()
+		virtual bool mouseInBounds()
 		{
 			SDL_FRect bounds = getBounds();
 			SDL_FPoint checkPoint = mousePos;
@@ -187,7 +198,7 @@ public:
 			}
 		}
 
-		engineObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
+		engineObject(const SDL_FRect& hull = { 0,0,10,10 }, SDL_Texture* tex = NULL, double rot = 0,
 			bool centered = true, bool fixed = false, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
 			int depth = 0)
 			: hull(hull), tex{ tex }, rot(rot), centered(centered), fixed(fixed),
@@ -204,7 +215,7 @@ public:
 
 		void update()
 		{
-			if (mouseStates[0] == 1 && mouseInBounds())
+			if (updateFlag && mouseStates[0] == 1 && mouseInBounds())
 				onClick();
 			for (auto& func : updateFuncs) {
 				func(shared_from_this());
@@ -212,7 +223,7 @@ public:
 		}
 
 		buttonObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
-			bool centered = true, bool fixed = false, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
+			bool centered = true, bool fixed = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
 			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
 			: engineObject(hull, tex, rot,
 				centered, fixed, flip, scale,
