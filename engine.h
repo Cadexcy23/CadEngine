@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <time.h>
 
 
 static class Engine {
@@ -29,6 +30,7 @@ public:
 	static double screenRotation;
 	static SDL_FPoint mousePos;
 	static SDL_FPoint rawMousePos;
+	static SDL_FPoint mousePosDif;
 	static std::vector<int> mouseStates;
 	static std::vector<int> keyStates;
 	static std::vector<int> wheelStates;
@@ -64,6 +66,7 @@ public:
 		bool drawFlag;
 		bool updateFlag;
 		bool remove;
+		clock_t timeCreated;
 		std::vector<std::function<void(std::shared_ptr<Engine::engineObject> obj)>> drawFuncs;
 		std::vector<std::function<void(std::shared_ptr<Engine::engineObject> obj)>> updateFuncs;
 
@@ -203,7 +206,9 @@ public:
 			int depth = 0)
 			: hull(hull), tex{ tex }, rot(rot), centered(centered), fixed(fixed),
 			flip(flip), scale(scale), depth(depth),
-			drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0) {}
+			drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0) {
+			timeCreated = clock();
+		}
 
 		virtual ~engineObject() {}
 	};

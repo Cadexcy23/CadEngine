@@ -8,46 +8,6 @@ bool follow = false;
 
 
 //ENGINE OBJECTS FUNCS
-void drawDebug(std::shared_ptr<Engine::engineObject> obj) //add this to the base engine
-{
-	if (Engine::debugLevel >= 2)
-	{
-
-		float w, h;
-		std::string objS = "OBJ Count: " + std::to_string(objs.size());
-		SDL_Texture* obj = Engine::loadText(objS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(obj, &w, &h);
-		Engine::drawTex(obj, { 0, h * 1, w, h }, 0, false);
-
-
-		std::string camS = "CamX: " + std::to_string(Engine::camPos.x) + "Y: " + std::to_string(Engine::camPos.y);
-		SDL_Texture* cam = Engine::loadText(camS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(cam, &w, &h);
-		Engine::drawTex(cam, { 0, h * 2, w, h }, 0, false);
-
-		std::string zoomS = "Zoom: " + std::to_string(Engine::zoom);
-		SDL_Texture* zoom = Engine::loadText(zoomS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(zoom, &w, &h);
-		Engine::drawTex(zoom, { 0, h * 3, w, h }, 0, false);
-
-		std::string rouseS = "Rouse X: " + std::to_string(Engine::rawMousePos.x) + "Y: " + std::to_string(Engine::mousePos.y);;
-		SDL_Texture* rouse = Engine::loadText(rouseS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(rouse, &w, &h);
-		Engine::drawTex(rouse, { 0, h * 4, w, h }, 0, false);
-
-		std::string mouseS = "Mouse X: " + std::to_string(Engine::mousePos.x) + "Y: " + std::to_string(Engine::mousePos.y);;
-		SDL_Texture* mouse = Engine::loadText(mouseS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(mouse, &w, &h);
-		Engine::drawTex(mouse, { 0, h * 5, w, h }, 0, false);
-
-		std::string screenBoundsS = "Screen Bounds: L: " + std::to_string(Engine::screenBounds.x) + " R: " + std::to_string(Engine::screenBounds.w)
-			+ " U: " + std::to_string(Engine::screenBounds.y) + " D: " + std::to_string(Engine::screenBounds.h);
-		SDL_Texture* screenBounds = Engine::loadText(screenBoundsS.c_str(), Engine::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
-		SDL_GetTextureSize(screenBounds, &w, &h);
-		Engine::drawTex(screenBounds, { 0, h * 6, w, h }, 0, false);
-	}
-}
-
 void quitProgram()
 {
 	Engine::quit = true;
@@ -277,7 +237,6 @@ void exampleInit()
 	SDL_FRect hull = { 0, 0, w, h };
 	std::shared_ptr<Engine::engineObject> watermark = Engine::addObject(std::make_shared<Engine::engineObject>(Engine::engineObject(hull, tex, 0, false, true)));
 	watermark->depth = -1;
-	watermark->drawFuncs.push_back(drawDebug);
 
 	//quit button
 	SDL_Texture* quitTex = Engine::loadText("Quit", bold, { 255, 255, 255, 255 });

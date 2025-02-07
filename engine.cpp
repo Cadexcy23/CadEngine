@@ -32,6 +32,7 @@ SDL_FPoint Engine::screenOffSet = { 0, 0 };
 double Engine::screenRotation = 0;
 SDL_FPoint Engine::mousePos = { 0, 0 };
 SDL_FPoint Engine::rawMousePos = { 0, 0 };
+SDL_FPoint Engine::mousePosDif = { 0, 0 };
 std::vector<int> Engine::mouseStates;
 std::vector<int> Engine::keyStates;
 std::vector<int> Engine::wheelStates;
@@ -84,7 +85,6 @@ TTF_Font* Engine::loadFont(const char* path, int size)
 		if (font.first == path)
 			return font.second;
 	}
-
 	TTF_Font* font = TTF_OpenFont(path, size);
 	if (font == NULL)
 	{
@@ -383,9 +383,11 @@ void profileUpdate()
 void readMouse()
 {
 	//get mouse button state and position
+	Engine::mousePosDif = { Engine::rawMousePos.x, Engine::rawMousePos.y };
 	Uint32 mouseState = SDL_GetMouseState(&Engine::rawMousePos.x, &Engine::rawMousePos.y);
 	Engine::rawMousePos.x *= Engine::resScale.x;
 	Engine::rawMousePos.y *= Engine::resScale.y;
+	Engine::mousePosDif = { Engine::mousePosDif.x - Engine::rawMousePos.x, Engine::mousePosDif.y - Engine::rawMousePos.y };
 	Engine::mousePos.x = Engine::rawMousePos.x;
 	Engine::mousePos.y = Engine::rawMousePos.y;
 	//adjust mouse pos in relation to the camera pos and zoom
@@ -509,10 +511,15 @@ static void readKeyboard()
 void updateObjects()
 {
 	std::vector<std::shared_ptr<Engine::engineObject>> remObjs = {};
-	for (auto& obj : activeObjects) {
+	/*for (auto& obj : activeObjects) {
 		obj->update();
 		if (obj->remove)
 			remObjs.push_back(obj);
+	}*/
+	for (auto obj = activeObjects.rbegin(); obj != activeObjects.rend(); ++obj) {
+		(*obj)->update();
+		if ((*obj)->remove)
+			remObjs.push_back(*obj);
 	}
 	while (remObjs.size() > 0)
 	{
