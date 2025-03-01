@@ -44,6 +44,11 @@ std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
 //Mixing
 
 //Rendering
+void Engine::centerWindow()
+{
+	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+}
+
 void Engine::clearTarget(SDL_Color color)
 {
 	Uint8 r, g, b, a;

@@ -36,6 +36,7 @@ public:
 	static std::vector<int> wheelStates;
 	static float deltaSeconds;
 
+	static void centerWindow();
 	static void clearTarget(SDL_Color color = { 0,0,0,255 });
 	static SDL_Texture* setRenderTarget(SDL_Texture* tex);
 	static SDL_Point setResolution(SDL_Point res);
@@ -217,23 +218,33 @@ public:
 	struct buttonObject : public Engine::engineObject
 	{
 		std::function<void()> onClick;
+		std::function<void(std::shared_ptr<Engine::engineObject> obj)> onHover;
+		std::function<void(std::shared_ptr<Engine::engineObject> obj)> offHover;
 
 		void update()
 		{
-			if (updateFlag && mouseStates[0] == 1 && mouseInBounds())
-				onClick();
+			if (updateFlag && mouseInBounds())
+			{
+				if (onHover)
+					onHover(shared_from_this());
+				if (onClick && mouseStates[0] == 1)
+					onClick();
+			}
+			else if (offHover)
+				offHover(shared_from_this());
 			for (auto& func : updateFuncs) {
 				func(shared_from_this());
 			}
 		}
 
-		buttonObject(const SDL_FRect& hull, SDL_Texture* tex, double rot = 0,
+		buttonObject(const SDL_FRect& hull = { 0, 0, 0, 0 }, SDL_Texture* tex = NULL, double rot = 0,
 			bool centered = true, bool fixed = true, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,
 			SDL_FPoint vel = { 0, 0 }, double spin = 0, int depth = 0)
 			: engineObject(hull, tex, rot,
 				centered, fixed, flip, scale,
 				depth),
-			onClick(onClick) {}
+			onClick(onClick) {
+		}
 	};
 
 	static std::shared_ptr<Engine::engineObject> addObject(std::shared_ptr<Engine::engineObject> obj);

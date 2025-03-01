@@ -24,6 +24,7 @@
     <ProjectGuid>{7a878296-05ae-4131-90d2-4a41ffab2a91}</ProjectGuid>
     <RootNamespace>SDL3Base</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>CadEngine</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
