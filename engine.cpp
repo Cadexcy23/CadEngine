@@ -1,6 +1,7 @@
+#include "engine.h"
 #include <stdio.h>
 #include <random>
-#include "engine.h"
+#include <sstream>
 
 //private
 const bool* SDLKeyStates;
@@ -20,9 +21,10 @@ float framesPS;
 bool Engine::quit = false;
 bool Engine::showFPS = false;
 Uint32 Engine::debugLevel = 0;
+Uint32 Engine::logLevel = 1;
 int Engine::engineState = STATE_DEFAULT;
 SDL_Point Engine::baseRes = { 1920 / 1, 1080 / 1 };
-SDL_Point Engine::windowRes = { 1920 / 2, 1080 / 2 };
+SDL_Point Engine::windowRes;
 SDL_FPoint Engine::resScale = { float(Engine::baseRes.x) / float(Engine::windowRes.x), float(Engine::baseRes.y) / float(Engine::windowRes.y) };
 SDL_ScaleMode Engine::scaleMode = SDL_SCALEMODE_LINEAR;
 float Engine::zoom = 1;
@@ -39,6 +41,117 @@ std::vector<int> Engine::wheelStates;
 float Engine::deltaSeconds;
 std::vector<std::shared_ptr<Engine::engineObject>> activeObjects;
 std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
+
+//Logging
+void Engine::log(const char* text, Uint32 level)
+{
+	if (Engine::logLevel >= level)
+		printf("%s\n", text);
+}
+
+//Serialization
+void generateDefaultSettingsFile()
+{
+	Engine::log("Generating default settings file");
+	//check if there is one, back it up if there is
+	if (std::ifstream("resource/settings.cfg"))
+	{
+		Engine::log("settings.cfg already exists, backing up");
+		std::ifstream file("resource/settings.cfg");
+		std::string line;
+		std::string fileData;
+		while (std::getline(file, line))
+		{
+			fileData += line + "\n";
+		}
+		file.close();
+		std::ofstream backup("resource/settings.cfg.bak");
+		backup << fileData;
+		backup.close();
+	}
+
+	std::ofstream file("resource/settings.cfg");
+	file << "[Resolution] 270\n";
+	file << "[Vsync] 1\n";
+	file.close();
+}
+
+std::string Engine::getSetting(std::string setting)
+{
+	std::ifstream file("resource/settings.cfg");
+	if (!file) {
+		printf("Failed to open settings file for reading.\n");
+		file.close();
+		generateDefaultSettingsFile();
+		file.open("resource/settings.cfg");
+	}
+	std::string line;
+	std::string settingValue;
+	while (std::getline(file, line))
+	{
+		if (line.find(setting) != std::string::npos)
+		{
+			std::regex rgx("[^\\s]+");
+			std::sregex_iterator next(line.begin(), line.end(), rgx);
+			std::sregex_iterator end;
+			while (next != end)
+			{
+				std::smatch match = *next;
+				settingValue = match.str();
+				next++;
+			}
+		}
+	}
+	file.close();
+	return settingValue;
+}
+
+void Engine::setSetting(const std::string& setting, const std::string& newValue)
+{
+	std::ifstream fileIn("resource/settings.cfg");
+	if (!fileIn) {
+		printf("Failed to open settings file for reading.\n");
+		return;
+	}
+
+	std::ostringstream buffer;
+	std::string line;
+	bool settingFound = false;
+
+	while (std::getline(fileIn, line))
+	{
+		if (line.find("[" + setting + "]") != std::string::npos)
+		{
+			std::regex rgx("\\[" + setting + "\\]\\s*(\\d+)");
+			if (std::regex_search(line, rgx)) {
+				line = std::regex_replace(line, rgx, "[" + setting + "] " + newValue);
+				settingFound = true;
+			}
+		}
+
+		buffer << line << "\n";
+	}
+
+	fileIn.close();
+
+	if (!settingFound) {
+		buffer << "[" << setting << "] " << newValue << "\n";
+	}
+
+	std::ofstream fileOut("resource/settings.cfg");
+	if (!fileOut) {
+		printf("Failed to open settings file for writing.\n");
+		return;
+	}
+
+	fileOut << buffer.str();
+	fileOut.close();
+}
+
+
+
+
+
 
 
 //Mixing
@@ -79,6 +192,24 @@ bool Engine::toggleVsync()
 	int syncState;
 	SDL_GetRenderVSync(renderer, &syncState);
 	return SDL_SetRenderVSync(renderer, !syncState);
+}
+
+void cleanActiveTextures()
+{
+	for (auto it = activeTextures.begin(); it != activeTextures.end();)
+	{
+		if (it->second->format == SDL_PIXELFORMAT_ARGB8888 ||
+			it->second->format == SDL_PIXELFORMAT_ABGR8888)
+			++it;
+		else
+		{
+			//remove texture from memory
+			SDL_DestroyTexture(it->second);
+			//remove texture from list
+			//Engine::log(("Destroyed texture: " + it->first).c_str());
+			it = activeTextures.erase(it);
+		}
+	}
 }
 
 TTF_Font* Engine::loadFont(const char* path, int size)
@@ -141,6 +272,9 @@ SDL_Texture* Engine::loadText(const char* text, TTF_Font* font, SDL_Color color)
 
 SDL_Texture* Engine::loadTex(const char* path, bool unique)
 {
+	//clean out lost textures
+	cleanActiveTextures();
+
 	//Check if we already have this texture loaded
 	if (!unique)//Skip if we want a unique one
 	{
@@ -148,7 +282,10 @@ SDL_Texture* Engine::loadTex(const char* path, bool unique)
 		{
 			//If we already have the texture loaded just return it
 			if (tex.first == path)
+			{
+				//Engine::log(("Reusing loaded texture: " + std::string(path)).c_str());
 				return tex.second;
+			}
 		}
 	}
 
@@ -173,7 +310,13 @@ SDL_Texture* Engine::loadTex(const char* path, bool unique)
 	SDL_SetTextureScaleMode(newTexture, scaleMode);
 
 	//Add tex to our list of loaded textures
-	activeTextures.push_back({ path, newTexture });
+	if (!unique)
+		activeTextures.push_back({ path, newTexture });
+
+	/*if (!unique)
+		Engine::log(("New texture created: " + std::string(path)).c_str());
+	else
+		Engine::log(("Unique texture loaded: " + std::string(path)).c_str());*/
 
 	return newTexture;
 }
@@ -218,6 +361,11 @@ void Engine::drawRect(SDL_FRect rect, SDL_Color color, bool fill, bool centered)
 void Engine::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale, SDL_FRect* chunk)
 {
 	SDL_FRect newRect = rect;
+	if (newRect.w == 0 || newRect.h == 0)
+	{
+		newRect.w = float(tex->w);
+		newRect.h = float(tex->h);
+	}
 	newRect.w *= scale;
 	newRect.h *= scale;
 	switch (center)
@@ -581,7 +729,13 @@ bool initSDL()
 
 bool initWindow(const char* title = "CadEngine", SDL_WindowFlags flags = NULL)
 {
-	window = SDL_CreateWindow(title, Engine::windowRes.x, Engine::windowRes.y, flags);
+	//load settings from file
+	int vRes = std::stoi(Engine::getSetting("Resolution"));
+	//apply aspect ratio
+	SDL_Point res = { vRes / 9 * 16, vRes };
+	Engine::setResolution(res);
+
+	window = SDL_CreateWindow(title, res.x, res.y, flags);
 	SDL_Surface* icon = IMG_Load("Resource/icon.png");
 	SDL_SetWindowIcon(window, icon);
 	SDL_DestroySurface(icon);

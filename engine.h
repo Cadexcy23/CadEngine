@@ -7,6 +7,10 @@
 #include <memory>
 #include <string>
 #include <time.h>
+#include <fstream>
+#include <regex>
+#include <map>
+#include <array>
 
 
 static class Engine {
@@ -14,6 +18,7 @@ public:
 	static bool quit;
 	static bool showFPS;
 	static Uint32 debugLevel;
+	static Uint32 logLevel;
 	static int engineState;
 	enum engineStates {
 		STATE_DEFAULT,
@@ -35,7 +40,16 @@ public:
 	static std::vector<int> keyStates;
 	static std::vector<int> wheelStates;
 	static float deltaSeconds;
+	//Logging
+	static void log(const char* text, Uint32 level = 1);
+	//Serialization
+	static std::string getSetting(std::string setting);
+	static void setSetting(const std::string& setting, const std::string& newValue);
+	//Mixing
 
+	//Rendering
+
+	//Objects
 	static void centerWindow();
 	static void clearTarget(SDL_Color color = { 0,0,0,255 });
 	static SDL_Texture* setRenderTarget(SDL_Texture* tex);
