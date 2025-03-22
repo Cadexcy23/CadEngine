@@ -76,7 +76,7 @@ void generateDefaultSettingsFile()
 	file.close();
 }
 
-std::string Engine::getSetting(std::string setting)
+std::string Engine::getSetting(const std::string& setting)
 {
 	std::ifstream file("resource/settings.cfg");
 	if (!file) {
@@ -85,23 +85,25 @@ std::string Engine::getSetting(std::string setting)
 		generateDefaultSettingsFile();
 		file.open("resource/settings.cfg");
 	}
+
 	std::string line;
 	std::string settingValue;
+
 	while (std::getline(file, line))
 	{
-		if (line.find(setting) != std::string::npos)
+		if (line.find("[" + setting + "]") != std::string::npos)
 		{
-			std::regex rgx("[^\\s]+");
-			std::sregex_iterator next(line.begin(), line.end(), rgx);
-			std::sregex_iterator end;
-			while (next != end)
+			// Match everything after the "]" with optional leading spaces
+			std::regex rgx("\\[" + setting + "\\]\\s*(.*)");
+			std::smatch match;
+			if (std::regex_search(line, match, rgx) && match.size() > 1)
 			{
-				std::smatch match = *next;
-				settingValue = match.str();
-				next++;
+				settingValue = match[1].str(); // Capture the entire value
+				break; // No need to continue searching once found
 			}
 		}
 	}
+
 	file.close();
 	return settingValue;
 }
@@ -122,9 +124,9 @@ void Engine::setSetting(const std::string& setting, const std::string& newValue)
 	{
 		if (line.find("[" + setting + "]") != std::string::npos)
 		{
-			std::regex rgx("\\[" + setting + "\\]\\s*(\\d+)");
+			std::regex rgx("\\[" + setting + "\\].*");
 			if (std::regex_search(line, rgx)) {
-				line = std::regex_replace(line, rgx, "[" + setting + "] " + newValue);
+				line = "[" + setting + "] " + newValue;
 				settingFound = true;
 			}
 		}
@@ -147,12 +149,6 @@ void Engine::setSetting(const std::string& setting, const std::string& newValue)
 	fileOut << buffer.str();
 	fileOut.close();
 }
-
-
-
-
-
-
 
 //Mixing
 
@@ -714,6 +710,21 @@ void Engine::controller()
 
 //Initialization
 
+std::vector<std::string> Engine::splitString(const std::string& str, const std::string& delim)
+{
+	std::vector<std::string> tokens;
+	size_t prev = 0, pos = 0;
+	do
+	{
+		pos = str.find(delim, prev);
+		if (pos == std::string::npos) pos = str.length();
+		std::string token = str.substr(prev, pos - prev);
+		if (!token.empty()) tokens.push_back(token);
+		prev = pos + delim.length();
+	} while (pos < str.length() && prev < str.length());
+	return tokens;
+}
+
 bool initSDL()
 {
 	//Initialize SDL
@@ -730,9 +741,11 @@ bool initSDL()
 bool initWindow(const char* title = "CadEngine", SDL_WindowFlags flags = NULL)
 {
 	//load settings from file
-	int vRes = std::stoi(Engine::getSetting("Resolution"));
+	std::string resString = Engine::getSetting("Resolution");
+	auto splitRes = Engine::splitString(resString);
+
 	//apply aspect ratio
-	SDL_Point res = { vRes / 9 * 16, vRes };
+	SDL_Point res = { stoi(splitRes[0]), stoi(splitRes[1]) };
 	Engine::setResolution(res);
 
 	window = SDL_CreateWindow(title, res.x, res.y, flags);
@@ -763,7 +776,8 @@ bool initRenderer()
 	//Initialize renderer blend mode
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	//Set Vsync
-	SDL_SetRenderVSync(renderer, 1);
+	int vsyncSetting = stoi(Engine::getSetting("Vsync"));
+	SDL_SetRenderVSync(renderer, vsyncSetting);
 
 	//Create screen texture and set it as our render texture
 	screenTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, Engine::baseRes.x, Engine::baseRes.y);

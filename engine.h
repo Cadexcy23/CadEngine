@@ -43,7 +43,7 @@ public:
 	//Logging
 	static void log(const char* text, Uint32 level = 1);
 	//Serialization
-	static std::string getSetting(std::string setting);
+	static std::string getSetting(const std::string& setting);
 	static void setSetting(const std::string& setting, const std::string& newValue);
 	//Mixing
 
@@ -65,6 +65,7 @@ public:
 	static void removeAllObjects();
 	static void draw();
 	static void controller();
+	static std::vector<std::string> splitString(const std::string& str, const std::string& delim = " ");
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 
 	struct engineObject : public std::enable_shared_from_this<engineObject> {
