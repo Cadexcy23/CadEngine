@@ -41,6 +41,8 @@ std::vector<int> Engine::wheelStates;
 float Engine::deltaSeconds;
 std::vector<std::shared_ptr<Engine::engineObject>> activeObjects;
 std::vector<std::shared_ptr<Engine::engineObject>> addObjects;
+std::random_device rd;
+std::mt19937 gen;
 
 //Logging
 void Engine::log(const char* text, Uint32 level)
@@ -71,7 +73,7 @@ void generateDefaultSettingsFile()
 	}
 
 	std::ofstream file("resource/settings.cfg");
-	file << "[Resolution] 270\n";
+	file << "[Resolution] 480 270\n";
 	file << "[Vsync] 1\n";
 	file.close();
 }
@@ -165,6 +167,49 @@ void Engine::clearTarget(SDL_Color color)
 	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 	SDL_RenderClear(renderer);
 	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+}
+
+SDL_Texture* Engine::clearTextureChunk(SDL_Texture* tex, SDL_FRect chunk)
+{
+	//if default value, do full clear
+	if (!chunk.w)
+	{
+		//set render target
+		SDL_Texture* lastTex = Engine::setRenderTarget(tex);
+
+		//clear tex
+		Engine::clearTarget({ 128, 128, 128, 0 });
+
+		//return our render target to previous
+		Engine::setRenderTarget(lastTex);
+
+		return tex;
+	}
+
+	//create new texture of the same size
+	SDL_Texture* newTex = Engine::loadTargetTex({ tex->w, tex->h });
+
+	//set render target
+	SDL_Texture* lastTex = Engine::setRenderTarget(newTex);
+
+	//clear tex
+	Engine::clearTarget({ 128, 128, 128, 0 });
+
+	//determine the 4 rects around the chunk we need to copy
+	SDL_FRect rects[4];
+	rects[0] = { 0, 0, chunk.x + chunk.w, chunk.y };
+	rects[1] = { chunk.x + chunk.w, 0, float(tex->w) - chunk.x - chunk.w, chunk.y + chunk.h };
+	rects[2] = { chunk.x, chunk.y + chunk.h, float(tex->w) - chunk.x, float(tex->h) - chunk.y - chunk.h };
+	rects[3] = { 0, chunk.y, chunk.x, float(tex->h) - chunk.y };
+
+	//draw these new rects onto the new texture from the old one
+	for (auto r : rects)
+		Engine::drawTex(tex, r, 0, false, SDL_FLIP_NONE, 1, &r);
+
+	//return our render target to previous
+	Engine::setRenderTarget(lastTex);
+
+	return newTex;
 }
 
 SDL_Texture* Engine::setRenderTarget(SDL_Texture* tex)
@@ -708,6 +753,13 @@ void Engine::controller()
 	updateScreenProperties();
 }
 
+float Engine::randInRange(SDL_FPoint range)
+{
+	std::uniform_real_distribution<float> dist(range.x, range.y);
+
+	return dist(gen);
+}
+
 //Initialization
 
 std::vector<std::string> Engine::splitString(const std::string& str, const std::string& delim)
@@ -828,6 +880,9 @@ bool initController()
 
 bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 {
+	//init random
+	std::mt19937 gen(rd());
+
 	srand(time(NULL) * clock());
 	initSDL();
 	initWindow(title, winFlags);

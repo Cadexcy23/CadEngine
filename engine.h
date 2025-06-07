@@ -52,6 +52,7 @@ public:
 	//Objects
 	static void centerWindow();
 	static void clearTarget(SDL_Color color = { 0,0,0,255 });
+	static SDL_Texture* clearTextureChunk(SDL_Texture* tex, SDL_FRect chunk = {});
 	static SDL_Texture* setRenderTarget(SDL_Texture* tex);
 	static SDL_Point setResolution(SDL_Point res);
 	static bool toggleVsync();
@@ -65,6 +66,7 @@ public:
 	static void removeAllObjects();
 	static void draw();
 	static void controller();
+	static float randInRange(SDL_FPoint range);
 	static std::vector<std::string> splitString(const std::string& str, const std::string& delim = " ");
 	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 
