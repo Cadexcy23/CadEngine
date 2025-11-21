@@ -18,6 +18,36 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CadEngine\Core\engine.cpp" />
+    <ClCompile Include="CadEngine\Core\logger.cpp" />
+    <ClCompile Include="CadEngine\Core\timer.cpp" />
+    <ClCompile Include="CadEngine\Graphics\renderer.cpp" />
+    <ClCompile Include="CadEngine\Graphics\text.cpp" />
+    <ClCompile Include="CadEngine\Graphics\texture.cpp" />
+    <ClCompile Include="CadEngine\InputOutput\input.cpp" />
+    <ClCompile Include="CadEngine\InputOutput\serialization.cpp" />
+    <ClCompile Include="CadEngine\Network\network.cpp" />
+    <ClCompile Include="CadEngine\Scene\object.cpp" />
+    <ClCompile Include="CadEngine\Scene\scene.cpp" />
+    <ClCompile Include="CadEngine\Sound\sound.cpp" />
+    <ClCompile Include="example.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CadEngine\Core\engine.h" />
+    <ClInclude Include="CadEngine\Core\logger.h" />
+    <ClInclude Include="CadEngine\Core\timer.h" />
+    <ClInclude Include="CadEngine\Graphics\renderer.h" />
+    <ClInclude Include="CadEngine\Graphics\text.h" />
+    <ClInclude Include="CadEngine\Graphics\texture.h" />
+    <ClInclude Include="CadEngine\InputOutput\input.h" />
+    <ClInclude Include="CadEngine\InputOutput\serialization.h" />
+    <ClInclude Include="CadEngine\Network\network.h" />
+    <ClInclude Include="CadEngine\Scene\object.h" />
+    <ClInclude Include="CadEngine\Scene\scene.h" />
+    <ClInclude Include="CadEngine\Sound\sound.h" />
+    <ClInclude Include="example.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -137,14 +167,6 @@
       <AdditionalDependencies>SDL3.lib;SDL3_image.lib;SDL3_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="engine.cpp" />
-    <ClCompile Include="example.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="engine.h" />
-    <ClInclude Include="example.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
