@@ -25,7 +25,8 @@ public:
 		clock_t timeCreated;
 		std::vector<std::function<void(std::shared_ptr<engineObject> obj)>> drawFuncs;
 		std::vector<std::function<void(std::shared_ptr<engineObject> obj)>> updateFuncs;
-		std::vector<std::function<void(std::shared_ptr<engineObject> obj)>> startupFuncs;
+		std::vector<std::function<void(std::shared_ptr<engineObject> obj)>> spawnFuncs;
+		std::vector<std::function<void(std::shared_ptr<engineObject> obj)>> despawnFuncs;
 
 
 		virtual void drawHull();

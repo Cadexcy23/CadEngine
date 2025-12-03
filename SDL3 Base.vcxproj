@@ -21,7 +21,7 @@
   <ItemGroup>
     <ClCompile Include="CadEngine\Core\engine.cpp" />
     <ClCompile Include="CadEngine\Core\logger.cpp" />
-    <ClCompile Include="CadEngine\Core\timer.cpp" />
+    <ClCompile Include="CadEngine\Core\time.cpp" />
     <ClCompile Include="CadEngine\Graphics\renderer.cpp" />
     <ClCompile Include="CadEngine\Graphics\text.cpp" />
     <ClCompile Include="CadEngine\Graphics\texture.cpp" />
@@ -36,7 +36,7 @@
   <ItemGroup>
     <ClInclude Include="CadEngine\Core\engine.h" />
     <ClInclude Include="CadEngine\Core\logger.h" />
-    <ClInclude Include="CadEngine\Core\timer.h" />
+    <ClInclude Include="CadEngine\Core\time.h" />
     <ClInclude Include="CadEngine\Graphics\renderer.h" />
     <ClInclude Include="CadEngine\Graphics\text.h" />
     <ClInclude Include="CadEngine\Graphics\texture.h" />
@@ -143,6 +143,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,6 +159,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

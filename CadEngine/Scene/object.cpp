@@ -1,7 +1,7 @@
 #include "object.h"
 #include "../Core/engine.h"
 
-
+//EngineObject
 void Object::engineObject::drawHull()
 {
 	SDL_Color color = { 255, 255, 255, 255 };
@@ -124,10 +124,10 @@ void Object::engineObject::draw()
 
 void Object::engineObject::update()
 {
-	for (auto& func : startupFuncs) {
+	for (auto& func : spawnFuncs) {
 		func(shared_from_this());
 	}
-	startupFuncs.clear();
+	spawnFuncs.clear();
 
 	if (updateFlag)
 	{
@@ -157,8 +157,10 @@ drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0)
 
 Object::engineObject::~engineObject()
 {
+	Logger::log(Logger::LogCategory::Engine, Logger::LogLevel::Trace, "EngineObject destroyed");
 }
 
+//ButtonObject
 void Object::buttonObject::update()
 {
 	if (updateFlag && mouseInBounds())

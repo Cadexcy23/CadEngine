@@ -4,14 +4,17 @@
 #include <chrono>
 
 
+//make logger run on a thread?
+
+
 std::unordered_map<Logger::LogCategory, Logger::LogSettings> Logger::logSettings = {
-    { Logger::LogCategory::General,     { LogLevel::Trace, LogLevel::Debug, true,  true, "General"}},
-    { Logger::LogCategory::Engine,      { LogLevel::Trace, LogLevel::Debug, true,  true, "Engine" } },
-    { Logger::LogCategory::Graphics,    { LogLevel::Trace, LogLevel::Debug, true,  true, "Graphics" } },
-    { Logger::LogCategory::InputOutput, { LogLevel::Trace, LogLevel::Debug, true,  true, "InputOutput" } },
-    { Logger::LogCategory::Network,     { LogLevel::Trace, LogLevel::Debug, true,  true, "Network" } },
-    { Logger::LogCategory::Scene,       { LogLevel::Trace, LogLevel::Debug, true,  true, "Scene" } },
-    { Logger::LogCategory::Sound,       { LogLevel::Trace, LogLevel::Debug, true,  true, "Sound" } },
+    { Logger::LogCategory::General,     { LogLevel::Debug, LogLevel::Debug, true,  true, "General"}},
+    { Logger::LogCategory::Engine,      { LogLevel::Debug, LogLevel::Debug, true,  true, "Engine" } },
+    { Logger::LogCategory::Graphics,    { LogLevel::Debug, LogLevel::Debug, true,  true, "Graphics" } },
+    { Logger::LogCategory::InputOutput, { LogLevel::Debug, LogLevel::Debug, true,  true, "InputOutput" } },
+    { Logger::LogCategory::Network,     { LogLevel::Debug, LogLevel::Debug, true,  true, "Network" } },
+    { Logger::LogCategory::Scene,       { LogLevel::Debug, LogLevel::Debug, true,  true, "Scene" } },
+    { Logger::LogCategory::Sound,       { LogLevel::Debug, LogLevel::Debug, true,  true, "Sound" } },
 };
 
 void clearLogs()

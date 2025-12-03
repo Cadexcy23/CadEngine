@@ -165,7 +165,7 @@ bool Input::initController()
 	return true;
 }
 
-void Input::controller()//SEPERATE THE ENGINE LOOP AND INPUT LOOP SEND ENGINE PART BACK
+void Input::controller()
 {
 	while (SDL_PollEvent(&event)) {
 		//printf("input detected: %i\n", event.type);

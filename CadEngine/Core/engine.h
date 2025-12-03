@@ -3,7 +3,7 @@
 
 //include all modules
 #include "../Core/logger.h"
-#include "../Core/timer.h"
+#include "../Core/time.h"
 #include "../Graphics/renderer.h"
 #include "../Graphics/text.h"
 #include "../Graphics/texture.h"
@@ -27,6 +27,6 @@ public:
 	};
 	
 	static float randInRange(SDL_FPoint range);
-	static bool initEngine(const char* title = "CENP", SDL_WindowFlags winFlags = NULL);
+	static bool initEngine(const char* title = "CadEngine", SDL_WindowFlags winFlags = NULL);
 	static void update();
 };

@@ -4,7 +4,7 @@
 
 
 //EXAMPLE CODE
-std::vector<std::shared_ptr<Example::velObject>> objs;
+std::vector<std::shared_ptr<Network::netObject>> netObjs;
 bool follow = false;
 
 
@@ -21,13 +21,13 @@ void tempUpdateFunc(std::shared_ptr<Object::engineObject> obj)
 		//get downcast object
 		auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
 
-		obj->hull.x += devObj->vel.x * Timer::deltaSeconds;
-		obj->hull.y += devObj->vel.y * Timer::deltaSeconds;
-		devObj->vel.x -= (devObj->vel.x * Timer::deltaSeconds) / 2;
-		devObj->vel.y -= (devObj->vel.y * Timer::deltaSeconds) / 2;
+		obj->hull.x += devObj->vel.x * Time::deltaSeconds;
+		obj->hull.y += devObj->vel.y * Time::deltaSeconds;
+		devObj->vel.x -= (devObj->vel.x * Time::deltaSeconds) / 2;
+		devObj->vel.y -= (devObj->vel.y * Time::deltaSeconds) / 2;
 
-		obj->rot += devObj->spin * Timer::deltaSeconds;
-		devObj->spin -= (devObj->spin * Timer::deltaSeconds) / 2;
+		obj->rot += devObj->spin * Time::deltaSeconds;
+		devObj->spin -= (devObj->spin * Time::deltaSeconds) / 2;
 	}
 }
 
@@ -71,7 +71,7 @@ void keyboardControl(std::shared_ptr<Object::engineObject> obj)
 	if (Engine::engineState != Engine::STATE_PAUSE)
 	{
 		//get downcast object
-		auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+		auto velObj = std::dynamic_pointer_cast<Example::velObject>(obj);
 		if (Input::keyStates[SDL_SCANCODE_COMMA] == 1)
 		{
 			obj->texIndex--;
@@ -87,43 +87,77 @@ void keyboardControl(std::shared_ptr<Object::engineObject> obj)
 			obj->scale *= 0.95;
 		if (Input::keyStates[SDL_SCANCODE_EQUALS])
 			obj->scale *= 1.05;
-		if (devObj)
+		if (velObj)
 		{
 			if (Input::keyStates[SDL_SCANCODE_W])
-				devObj->vel.y -= 100 * Timer::deltaSeconds;
+				velObj->vel.y -= 100 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_S])
-				devObj->vel.y += 100 * Timer::deltaSeconds;
+				velObj->vel.y += 100 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_A])
-				devObj->vel.x -= 100 * Timer::deltaSeconds;
+				velObj->vel.x -= 100 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_D])
-				devObj->vel.x += 100 * Timer::deltaSeconds;
+				velObj->vel.x += 100 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_Q])
-				devObj->spin -= 360 * Timer::deltaSeconds;
+				velObj->spin -= 360 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_E])
-				devObj->spin += 360 * Timer::deltaSeconds;
+				velObj->spin += 360 * Time::deltaSeconds;
 			if (Input::keyStates[SDL_SCANCODE_SPACE] == 1)
 			{
-				devObj->vel.x *= 2;
-				devObj->vel.y *= 2;
+				velObj->vel.x *= 2;
+				velObj->vel.y *= 2;
 			}
 		}
 	}
 }
 
-void moveToMouse(std::shared_ptr<Object::engineObject> obj)
-{
-	obj->hull.x = Input::mousePos.x;
-	obj->hull.y = Input::mousePos.y;
+void spawnTest(float x, float y, const std::string& texturePath)  {
+	auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 }, nullptr);
+	// set server update funcs
+	p->updateFuncs.push_back(keepInScreen);
+	p->updateFuncs.push_back(tempUpdateFunc);
+	p->updateFuncs.push_back(keyboardControl);
+	p->updateFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
+		if (clock() >= obj->timeCreated + 1000) {
+			obj->remove = true;
+		}
+		});
+
+	p->despawnFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
+		int randomChance = rand() % 2;
+		if (randomChance == 1)
+			spawnTest(obj->hull.x, obj->hull.y, "resource/test.png");
+	});
+		
+
+	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
+	p->vel = vel;
+	p->rot = rand() % 360;
+	p->scale = float(rand() % 1000) / 1000.0 + 0.5;
+	p->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
+
+	//only run here when running a server with rendering active
+	p->tex.push_back(Texture::loadTex(texturePath.c_str()));
+	
+	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(Scene::addObject(p), texturePath));
+}
+
+void despawnTest() {
+	if(netObjs.size() > 0)
+	{
+		netObjs.back()->obj->remove = true;
+		Network::server.broadcastDespawn(netObjs.back()->netID);
+		netObjs.pop_back();
+	}
 }
 
 void engineControls()
 {
 
-	if (follow && objs.size())
+	/*if (follow && objs.size())
 	{
 		Renderer::camPos.x = objs.front()->hull.x;
 		Renderer::camPos.y = objs.front()->hull.y;
-	}
+	}*/
 
 	if (Input::wheelStates[0])
 	{
@@ -178,41 +212,85 @@ void engineControls()
 	}
 	if (Input::keyStates[SDL_SCANCODE_P] == 1)
 	{
-		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Info, "Object count: %i\n", objs.size());
+		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Info, "Object count: %i", Scene::activeObjects.size());
 	}
 	if (Input::keyStates[SDL_SCANCODE_F] == 1)
 	{
 		follow = !follow;
 	}
+	
 	if (Input::mouseStates[0])
 	{
-		SDL_Texture* tex = Texture::loadTex("resource/test2.png");
+		spawnTest(Input::mousePos.x, Input::mousePos.y, "resource/test.png");
+		/*SDL_Texture* tex = Texture::loadTex("resource/test2.png");
 		SDL_Texture* tex2 = Texture::loadTex("resource/test.png");
-		SDL_Texture* tex3 = Texture::loadTex("resource/icon.png");
-		float w, h;
-		SDL_GetTextureSize(tex, &w, &h);
-		SDL_FRect hull = { Input::mousePos.x, Input::mousePos.y, w / 10, h / 10 };
-		SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
-		double rot = rand() % 360;
-		float scale = float(rand() % 1000) / 1000.0 + 0.5;
-		double spin = double(rand() % 20000) / 1000.0 - 10.0;
-
-		std::shared_ptr<Example::velObject> velObj = std::make_shared<Example::velObject>(
-			hull, tex, rot, true, false, SDL_FLIP_NONE, scale, vel, spin);
-		velObj->updateFuncs.push_back(keepInScreen);
-		velObj->updateFuncs.push_back(tempUpdateFunc);
-		velObj->updateFuncs.push_back(keyboardControl);
-		objs.push_back(velObj);
-		velObj->tex.push_back(tex2);
-		velObj->tex.push_back(tex3);
-		Scene::addObject(velObj);
+		SDL_Texture* tex3 = Texture::loadTex("resource/icon.png");*/
 	}
 	if (Input::mouseStates[2])
 	{
-		if (objs.size())
+		despawnTest();
+	}
+
+	//Networking
+	if (Input::keyStates[SDL_SCANCODE_Z] == 1)
+	{
+		//Start server
+		if(!Network::server.isRunning())
 		{
-			objs.back()->remove = true;
-			objs.pop_back();
+			Network::server.start(27015);
+			Time::timer* t = Time::createTimer(16.67, -1, nullptr);
+			t->setCallback([t]() {
+				
+				Network::server.broadcastSnapshotToAllClients(t->getCurrent());
+				});
+		}
+		else
+		{
+			Network::server.stop();
+		}
+	}
+	if (Input::keyStates[SDL_SCANCODE_X] == 1)
+	{
+		//Start client
+		if (!Network::client.isConnected())
+		{
+			Network::client.connectTo("10.0.0.139", 27015);
+		}
+		else
+		{
+			Network::client.disconnect();
+		}
+	}
+	
+
+	// custom process network messages
+	Network::NetworkEvent e;
+	while (Network::server.pollEvent(e)) {
+		switch (e.type) {
+		case Network::NetworkEventType::ClientConnected:
+			// track client, send welcome, etc.
+			Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Info, "Client connected: %s", e.data);
+			break;
+		case Network::NetworkEventType::MessageReceived:
+			// e.socket is client socket (server) or server socket (client)
+			// e.message contains payload
+			Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Info, "Client said: %s", e.data);
+			break;
+		case Network::NetworkEventType::Error:
+			// log or handle
+			Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Error, "Client error: %s", e.data);
+			break;
+		default: break;
+		}
+	}
+
+	while (Network::client.pollEvent(e)) {
+		if (e.type == Network::NetworkEventType::MessageReceived) {
+			
+			/*size_t idx = 0;
+			Network::NetMsgType type = static_cast<Network::NetMsgType>(Serialization::read_u8(e.data, idx));
+			std::string msg(reinterpret_cast<const char*>(e.data.data()), e.data.size());
+			Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Info, "Server said: %s", msg);*/
 		}
 	}
 }
@@ -224,10 +302,6 @@ void exampleInit()
 
 	std::shared_ptr<Object::engineObject> bg = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject({ 0, 0, float(Renderer::baseRes.x), float(Renderer::baseRes.y) }, Texture::loadTex("resource/bg.png"), 0, false)));
 	bg->depth = 1;
-
-	//std::shared_ptr<Object::engineObject> me = Engine::addObject(std::make_shared<Object::engineObject>(Object::engineObject({ float(rand() % Renderer::baseRes.x), float(rand() % Renderer::baseRes.y) , 16, 16 }, Engine::loadTex("resource/icon.png"))));
-	//me->depth = -1;
-	//me->updateFuncs.push_back(moveToMouse);
 
 	TTF_Font* bold = Text::loadFont("resource/font/segoeuithibd.ttf", 32);
 	Text::loadFont("resource/font/segoeuithisi.ttf", 32);
@@ -265,12 +339,20 @@ void exampleInit()
 	Scene::addObject(conBObj);
 
 	//controls 3
-	SDL_Texture* conCTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture", bold, { 255, 255, 255, 255 });
+	SDL_Texture* conCTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(conCTex, &w, &h);
 	SDL_FRect conCHull = { 0, Renderer::baseRes.y - h - 80, w, h };
 	std::shared_ptr<Object::engineObject> conCObj = std::make_shared<Object::engineObject>(Object::engineObject(conCHull, conCTex, 0, false, true));
 	conCObj->depth = -1;
 	Scene::addObject(conCObj);
+
+	//controls 4
+	/*SDL_Texture* conDTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture", bold, { 255, 255, 255, 255 });
+	SDL_GetTextureSize(conDTex, &w, &h);
+	SDL_FRect conDHull = { 0, Renderer::baseRes.y - h - 120, w, h };
+	std::shared_ptr<Object::engineObject> conDObj = std::make_shared<Object::engineObject>(Object::engineObject(conDHull, conDTex, 0, false, true));
+	conDObj->depth = -1;
+	Scene::addObject(conDObj);*/
 
 	//TEMP
 	//quit button

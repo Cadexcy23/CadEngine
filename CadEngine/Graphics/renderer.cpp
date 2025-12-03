@@ -107,7 +107,7 @@ bool compDepth(std::shared_ptr<Object::engineObject> a, std::shared_ptr<Object::
 void sortObjects()
 {
 	std::sort(Scene::activeObjects.begin(), Scene::activeObjects.end(), compDepth);
-	Logger::log(Logger::LogCategory::InputOutput, Logger::LogLevel::Error, "Sorted");
+	Logger::log(Logger::LogCategory::Graphics, Logger::LogLevel::Trace, "Sorted");
 }
 
 void Renderer::renderObjects()

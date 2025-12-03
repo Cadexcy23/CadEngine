@@ -21,9 +21,6 @@
     <ClCompile Include="CadEngine\Core\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CadEngine\Core\timer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CadEngine\Graphics\renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -54,15 +51,15 @@
     <ClCompile Include="example.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CadEngine\Core\time.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CadEngine\Core\engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CadEngine\Core\logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CadEngine\Core\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CadEngine\Graphics\renderer.h">
@@ -80,9 +77,6 @@
     <ClInclude Include="CadEngine\InputOutput\serialization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CadEngine\Network\network.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CadEngine\Scene\object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -93,6 +87,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="example.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CadEngine\Core\time.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CadEngine\Network\network.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

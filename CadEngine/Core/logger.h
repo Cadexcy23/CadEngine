@@ -3,10 +3,7 @@
 #include <unordered_map>
 
 static class Logger {
-
 public:
-
-
     enum class LogCategory {
         General,
         Engine,

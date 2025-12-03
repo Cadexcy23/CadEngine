@@ -13,7 +13,6 @@ std::mt19937 gen;
 float Engine::randInRange(SDL_FPoint range)
 {
 	std::uniform_real_distribution<float> dist(range.x, range.y);
-
 	return dist(gen);
 }
 
@@ -50,6 +49,6 @@ void Engine::update()
 {
 	Input::controller();
 	Scene::updateObjects();
-	Timer::profileUpdate();
+	Time::update();
 	Renderer::updateScreenProperties();
 }
