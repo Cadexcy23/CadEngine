@@ -7,7 +7,7 @@ bool Engine::showFPS = false;
 Uint32 Engine::debugLevel = 0;
 int Engine::engineState = STATE_DEFAULT;
 std::random_device rd;
-std::mt19937 gen;
+std::mt19937 gen(rd());
 
 
 float Engine::randInRange(SDL_FPoint range)
@@ -31,8 +31,6 @@ bool initSDL()
 
 bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 {
-	//init random
-	std::mt19937 gen(rd());
 	srand(time(NULL) * clock());
 
 	Logger::init();

@@ -32,11 +32,11 @@ TTF_Font* Text::loadFont(const char* path, int size)
 SDL_Texture* Text::loadText(const char* text, TTF_Font* font, SDL_Color color)
 {
 	//Check if we already have this text loaded
-	for (const auto& tex : Texture::activeTextures)
+	for (const auto& textures : Texture::activeTextures)
 	{
 		//If we already have the text loaded just return it
-		if (tex.first == std::string(text) + std::to_string(int(font)) + std::to_string(color.r) + std::to_string(color.g) + std::to_string(color.b) + std::to_string(color.a))
-			return tex.second;
+		if (textures.first == std::string(text) + std::to_string(int(font)) + std::to_string(color.r) + std::to_string(color.g) + std::to_string(color.b) + std::to_string(color.a))
+			return textures.second;
 	}
 
 	//Load image at specified path

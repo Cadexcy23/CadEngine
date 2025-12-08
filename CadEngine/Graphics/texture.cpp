@@ -14,20 +14,20 @@ void Texture::clearTarget(SDL_Color color)
 	SDL_SetRenderDrawColor(Renderer::renderer, r, g, b, a);
 }
 
-SDL_Texture* Texture::setRenderTarget(SDL_Texture* tex)
+SDL_Texture* Texture::setRenderTarget(SDL_Texture* textures)
 {
 	SDL_Texture* lastTex = SDL_GetRenderTarget(Renderer::renderer);
-	SDL_SetRenderTarget(Renderer::renderer, tex);
+	SDL_SetRenderTarget(Renderer::renderer, textures);
 	return lastTex;
 }
 
-SDL_Texture* Texture::clearTextureChunk(SDL_Texture* tex, SDL_FRect chunk)
+SDL_Texture* Texture::clearTextureChunk(SDL_Texture* textures, SDL_FRect chunk)
 {
 	//if default value, do full clear
 	if (!chunk.w)
 	{
 		//set render target
-		SDL_Texture* lastTex = setRenderTarget(tex);
+		SDL_Texture* lastTex = setRenderTarget(textures);
 
 		//clear tex
 		clearTarget({ 128, 128, 128, 0 });
@@ -35,11 +35,11 @@ SDL_Texture* Texture::clearTextureChunk(SDL_Texture* tex, SDL_FRect chunk)
 		//return our render target to previous
 		setRenderTarget(lastTex);
 
-		return tex;
+		return textures;
 	}
 
 	//create new texture of the same size
-	SDL_Texture* newTex = loadTargetTex({ tex->w, tex->h });
+	SDL_Texture* newTex = loadTargetTex({ textures->w, textures->h });
 
 	//set render target
 	SDL_Texture* lastTex = setRenderTarget(newTex);
@@ -50,13 +50,13 @@ SDL_Texture* Texture::clearTextureChunk(SDL_Texture* tex, SDL_FRect chunk)
 	//determine the 4 rects around the chunk we need to copy
 	SDL_FRect rects[4];
 	rects[0] = { 0, 0, chunk.x + chunk.w, chunk.y };
-	rects[1] = { chunk.x + chunk.w, 0, float(tex->w) - chunk.x - chunk.w, chunk.y + chunk.h };
-	rects[2] = { chunk.x, chunk.y + chunk.h, float(tex->w) - chunk.x, float(tex->h) - chunk.y - chunk.h };
-	rects[3] = { 0, chunk.y, chunk.x, float(tex->h) - chunk.y };
+	rects[1] = { chunk.x + chunk.w, 0, float(textures->w) - chunk.x - chunk.w, chunk.y + chunk.h };
+	rects[2] = { chunk.x, chunk.y + chunk.h, float(textures->w) - chunk.x, float(textures->h) - chunk.y - chunk.h };
+	rects[3] = { 0, chunk.y, chunk.x, float(textures->h) - chunk.y };
 
 	//draw these new rects onto the new texture from the old one
 	for (auto r : rects)
-		drawTex(tex, r, 0, false, SDL_FLIP_NONE, 1, &r);
+		drawTex(textures, r, 0, false, SDL_FLIP_NONE, 1, &r);
 
 	//return our render target to previous
 	setRenderTarget(lastTex);
@@ -90,13 +90,13 @@ SDL_Texture* Texture::loadTex(const char* path, bool unique)
 	//Check if we already have this texture loaded
 	if (!unique)//Skip if we want a unique one
 	{
-		for (const auto& tex : Texture::activeTextures)
+		for (const auto& textures : Texture::activeTextures)
 		{
 			//If we already have the texture loaded just return it
-			if (tex.first == path)
+			if (textures.first == path)
 			{
 				//Engine::log(("Reusing loaded texture: " + std::string(path)).c_str());
-				return tex.second;
+				return textures.second;
 			}
 		}
 	}
@@ -144,13 +144,13 @@ SDL_Texture* Texture::loadTargetTex(SDL_Point size)
 	return newTexture;
 }
 
-void Texture::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale, SDL_FRect* chunk)
+void Texture::drawTex(SDL_Texture* textures, SDL_FRect rect, double rot, bool center, SDL_FlipMode flip, float scale, SDL_FRect* chunk)
 {
 	SDL_FRect newRect = rect;
 	if (newRect.w == 0 || newRect.h == 0)
 	{
-		newRect.w = float(tex->w);
-		newRect.h = float(tex->h);
+		newRect.w = float(textures->w);
+		newRect.h = float(textures->h);
 	}
 	newRect.w *= scale;
 	newRect.h *= scale;
@@ -159,10 +159,10 @@ void Texture::drawTex(SDL_Texture* tex, SDL_FRect rect, double rot, bool center,
 	case true:
 		newRect.x -= newRect.w / 2;
 		newRect.y -= newRect.h / 2;
-		SDL_RenderTextureRotated(Renderer::renderer, tex, chunk, &newRect, rot, NULL, flip);
+		SDL_RenderTextureRotated(Renderer::renderer, textures, chunk, &newRect, rot, NULL, flip);
 		break;
 	case false:
-		SDL_RenderTextureRotated(Renderer::renderer, tex, chunk, &newRect, rot, NULL, flip);
+		SDL_RenderTextureRotated(Renderer::renderer, textures, chunk, &newRect, rot, NULL, flip);
 		break;
 	}
 }

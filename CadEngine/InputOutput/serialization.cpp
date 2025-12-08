@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 
+//convert to using json
 
 void generateDefaultSettingsFile()
 {

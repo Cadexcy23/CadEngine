@@ -87,7 +87,7 @@ bool Object::engineObject::mouseInBounds()
 void Object::engineObject::resetSize()
 {
 	float w, h;
-	SDL_GetTextureSize(tex.front(), &w, &h);
+	SDL_GetTextureSize(textures.front(), &w, &h);
 	hull.w = w;
 	hull.h = h;
 	scale = 1;
@@ -112,7 +112,7 @@ void Object::engineObject::draw()
 				modHull.w *= Renderer::zoom;
 				modHull.h *= Renderer::zoom;
 			}
-			Texture::drawTex(tex[texIndex], modHull, rot, centered, flip, scale);
+			Texture::drawTex(textures[texIndex], modHull, rot, centered, flip, scale);
 		}
 		if (Engine::debugLevel)
 			drawHull();
@@ -139,20 +139,18 @@ void Object::engineObject::update()
 
 Object::engineObject::engineObject(
 	const SDL_FRect& hull,
-	SDL_Texture* texPtr,
+	std::vector<SDL_Texture*> textures,
 	double rot,
 	bool centered,
 	bool fixed,
 	SDL_FlipMode flip,
 	float scale,
 	int depth
-) : hull(hull), rot(rot), centered(centered), fixed(fixed),
+) : hull(hull), textures(textures), rot(rot), centered(centered), fixed(fixed),
 flip(flip), scale(scale), depth(depth),
 drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0)
 {
 	timeCreated = clock();
-	if (texPtr)
-		tex.push_back(texPtr);
 }
 
 Object::engineObject::~engineObject()
@@ -179,7 +177,7 @@ void Object::buttonObject::update()
 
 Object::buttonObject::buttonObject(
 	const SDL_FRect& hull,
-	SDL_Texture* tex,
+	std::vector<SDL_Texture*> textures,
 	double rot,
 	bool centered,
 	bool fixed,
@@ -188,7 +186,7 @@ Object::buttonObject::buttonObject(
 	SDL_FPoint vel,
 	double spin,
 	int depth)
-	: engineObject(hull, tex, rot,
+	: engineObject(hull, textures, rot,
 		centered, fixed, flip, scale,
 		depth),
 	onClick(onClick) {

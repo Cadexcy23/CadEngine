@@ -76,12 +76,12 @@ void keyboardControl(std::shared_ptr<Object::engineObject> obj)
 		{
 			obj->texIndex--;
 			if (obj->texIndex < 0)
-				obj->texIndex = obj->tex.size() - 1;
+				obj->texIndex = obj->textures.size() - 1;
 		}
 		if (Input::keyStates[SDL_SCANCODE_PERIOD] == 1)
 		{
 			obj->texIndex++;
-			obj->texIndex = obj->texIndex % obj->tex.size();
+			obj->texIndex = obj->texIndex % obj->textures.size();
 		}
 		if (Input::keyStates[SDL_SCANCODE_MINUS])
 			obj->scale *= 0.95;
@@ -111,7 +111,7 @@ void keyboardControl(std::shared_ptr<Object::engineObject> obj)
 }
 
 void spawnTest(float x, float y, const std::string& texturePath)  {
-	auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 }, nullptr);
+	auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 });
 	// set server update funcs
 	p->updateFuncs.push_back(keepInScreen);
 	p->updateFuncs.push_back(tempUpdateFunc);
@@ -136,7 +136,7 @@ void spawnTest(float x, float y, const std::string& texturePath)  {
 	p->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
 
 	//only run here when running a server with rendering active
-	p->tex.push_back(Texture::loadTex(texturePath.c_str()));
+	p->textures.push_back(Texture::loadTex(texturePath.c_str()));
 	
 	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(Scene::addObject(p), texturePath));
 }
@@ -261,6 +261,17 @@ void engineControls()
 			Network::client.disconnect();
 		}
 	}
+	if (Input::keyStates[SDL_SCANCODE_C] == 1)
+	{
+		Asset::CreateDummyTextureAsset();
+	}
+	if (Input::keyStates[SDL_SCANCODE_V] == 1)
+	{
+		auto obj = Scene::addObject(Asset::load<Example::velObject>("51eef2418bd189a9977230ec58838030"));
+		obj->updateFuncs.push_back(keepInScreen);
+		obj->updateFuncs.push_back(tempUpdateFunc);
+		obj->updateFuncs.push_back(keyboardControl);
+	}
 	
 
 	// custom process network messages
@@ -295,29 +306,46 @@ void engineControls()
 	}
 }
 
+void velLoad(const json j, std::shared_ptr<Object::engineObject> obj)
+{
+	//downcast object
+	auto dObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+
+	//load custom properties
+	dObj->vel = { 0,0 };
+	if (j.contains("velocity")) {
+		auto v = j["velocity"];
+		dObj->vel = { v[0], v[1] };
+	}
+	dObj->spin = j.value("spin", 0);
+}
+
 void exampleInit()
 {
+	// Load custom object types
+	Asset::registerObjectType("VelObject", velLoad);
+	
 	//set cam pos
 	Renderer::camPos = { float(Renderer::baseRes.x / 2), float(Renderer::baseRes.y / 2) };
 
-	std::shared_ptr<Object::engineObject> bg = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject({ 0, 0, float(Renderer::baseRes.x), float(Renderer::baseRes.y) }, Texture::loadTex("resource/bg.png"), 0, false)));
+	std::shared_ptr<Object::engineObject> bg = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject({ 0, 0, float(Renderer::baseRes.x), float(Renderer::baseRes.y) }, { Texture::loadTex("resource/bg.png") }, 0, false)));
 	bg->depth = 1;
 
 	TTF_Font* bold = Text::loadFont("resource/font/segoeuithibd.ttf", 32);
 	Text::loadFont("resource/font/segoeuithisi.ttf", 32);
 
-	SDL_Texture* tex = Text::loadText("CadEngine", bold, { 255, 255, 255, 255 });
+	SDL_Texture* textures = Text::loadText("CadEngine", bold, { 255, 255, 255, 255 });
 	float w, h = 0;
-	SDL_GetTextureSize(tex, &w, &h);
+	SDL_GetTextureSize(textures, &w, &h);
 	SDL_FRect hull = { 0, 0, w, h };
-	std::shared_ptr<Object::engineObject> watermark = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject(hull, tex, 0, false, true)));
+	std::shared_ptr<Object::engineObject> watermark = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject(hull, { textures }, 0, false, true)));
 	watermark->depth = -1;
 
 	//quit button
 	SDL_Texture* quitTex = Text::loadText("Quit", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(quitTex, &w, &h);
 	SDL_FRect quitHull = { Renderer::baseRes.x - w, 0, w, h };
-	std::shared_ptr<Object::buttonObject> quitButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitHull, quitTex, 0, false, true));
+	std::shared_ptr<Object::buttonObject> quitButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitHull, { quitTex }, 0, false, true));
 	quitButton->onClick = quitProgram;
 	std::shared_ptr<Object::engineObject> quitObject = Scene::addObject(quitButton);
 	quitObject->depth = -1;
@@ -326,7 +354,7 @@ void exampleInit()
 	SDL_Texture* conTex = Text::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(conTex, &w, &h);
 	SDL_FRect conHull = { 0, Renderer::baseRes.y - h, w, h };
-	std::shared_ptr<Object::engineObject> conObj = std::make_shared<Object::engineObject>(Object::engineObject(conHull, conTex, 0, false, true));
+	std::shared_ptr<Object::engineObject> conObj = std::make_shared<Object::engineObject>(Object::engineObject(conHull, { conTex }, 0, false, true));
 	conObj->depth = -1;
 	Scene::addObject(conObj);
 
@@ -334,7 +362,7 @@ void exampleInit()
 	SDL_Texture* conBTex = Text::loadText("WASD - Steer Objects   -/+ - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count   F - Toggle Follow", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(conBTex, &w, &h);
 	SDL_FRect conBHull = { 0, Renderer::baseRes.y - h - 40, w, h };
-	std::shared_ptr<Object::engineObject> conBObj = std::make_shared<Object::engineObject>(Object::engineObject(conBHull, conBTex, 0, false, true));
+	std::shared_ptr<Object::engineObject> conBObj = std::make_shared<Object::engineObject>(Object::engineObject(conBHull, { conBTex }, 0, false, true));
 	conBObj->depth = -1;
 	Scene::addObject(conBObj);
 
@@ -342,7 +370,7 @@ void exampleInit()
 	SDL_Texture* conCTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(conCTex, &w, &h);
 	SDL_FRect conCHull = { 0, Renderer::baseRes.y - h - 80, w, h };
-	std::shared_ptr<Object::engineObject> conCObj = std::make_shared<Object::engineObject>(Object::engineObject(conCHull, conCTex, 0, false, true));
+	std::shared_ptr<Object::engineObject> conCObj = std::make_shared<Object::engineObject>(Object::engineObject(conCHull, { conCTex }, 0, false, true));
 	conCObj->depth = -1;
 	Scene::addObject(conCObj);
 
@@ -359,7 +387,7 @@ void exampleInit()
 	SDL_Texture* quitTestTex = Text::loadText("Quit", bold, { 255, 255, 255, 255 });
 	SDL_GetTextureSize(quitTestTex, &w, &h);
 	SDL_FRect quitTestHull = { Renderer::baseRes.x - w, 0, w, h };
-	std::shared_ptr<Object::buttonObject> quitTestButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitTestHull, quitTestTex, 0, false, false));
+	std::shared_ptr<Object::buttonObject> quitTestButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitTestHull, { quitTestTex }, 0, false, false));
 	quitTestButton->onClick = quitProgram;
 	std::shared_ptr<Object::engineObject> quitTestObject = Scene::addObject(quitTestButton);
 	quitTestObject->depth = -10;
@@ -374,6 +402,9 @@ int main(int argc, char* argv[])
 
 	//Initialize modules
 	exampleInit();
+
+	//TEMP INIT
+	Asset::init();
 
 	while (!Engine::quit) {
 		//Process input

@@ -1,0 +1,24 @@
+{
+    "id": "e895a2662eaa6cb7cfa1236bca0b40b9",
+    "type": "EngineObject",
+    "textures": [
+        "resource/test.png",
+        "resource/test2.png"
+    ],
+    "texIndex": 0,
+    "hull": [
+        0,
+        0,
+        64,
+        64
+    ],
+    "centered": true,
+    "fixed": false,
+    "flip": 0,
+    "scale": 1.0,
+    "rot": 0.0,
+    "depth": 0,
+    "drawDefault": true,
+    "drawFlag": true,
+    "updateFlag": true
+}

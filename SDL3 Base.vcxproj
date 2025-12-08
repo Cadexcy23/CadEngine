@@ -29,6 +29,7 @@
     <ClCompile Include="CadEngine\InputOutput\serialization.cpp" />
     <ClCompile Include="CadEngine\Network\network.cpp" />
     <ClCompile Include="CadEngine\Scene\object.cpp" />
+    <ClCompile Include="CadEngine\Scene\asset.cpp" />
     <ClCompile Include="CadEngine\Scene\scene.cpp" />
     <ClCompile Include="CadEngine\Sound\sound.cpp" />
     <ClCompile Include="example.cpp" />
@@ -44,6 +45,7 @@
     <ClInclude Include="CadEngine\InputOutput\serialization.h" />
     <ClInclude Include="CadEngine\Network\network.h" />
     <ClInclude Include="CadEngine\Scene\object.h" />
+    <ClInclude Include="CadEngine\Scene\asset.h" />
     <ClInclude Include="CadEngine\Scene\scene.h" />
     <ClInclude Include="CadEngine\Sound\sound.h" />
     <ClInclude Include="example.h" />

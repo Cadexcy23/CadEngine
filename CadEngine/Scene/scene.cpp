@@ -1,5 +1,5 @@
 #include "scene.h"
-
+#include "../Core/logger.h"
 
 bool Scene::objectsModified = true;
 std::vector<std::shared_ptr<Object::engineObject>> Scene::activeObjects; //private?
@@ -7,6 +7,11 @@ std::vector<std::shared_ptr<Object::engineObject>> Scene::addObjects; //private?
 
 std::shared_ptr<Object::engineObject> Scene::addObject(std::shared_ptr<Object::engineObject> obj)//make one of these privatee or seomthing
 {
+	if (obj == nullptr)
+	{
+		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error, "Tried to add null object to scene");
+		return nullptr;
+	}
 	addObjects.push_back(obj);
 	return addObjects.back();
 }

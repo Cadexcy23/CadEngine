@@ -10,6 +10,7 @@
 #include "../InputOutput/input.h"
 #include "../InputOutput/serialization.h"
 #include "../Network/network.h"
+#include "../Scene/asset.h"
 #include "../Scene/object.h"
 #include "../Scene/scene.h"
 #include "../Sound/sound.h"

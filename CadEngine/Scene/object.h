@@ -9,7 +9,7 @@
 static class Object {
 public:
 	struct engineObject : public std::enable_shared_from_this<engineObject> {
-		std::vector<SDL_Texture*> tex;
+		std::vector<SDL_Texture*> textures;
 		int texIndex;
 		bool centered;
 		bool fixed;
@@ -37,9 +37,10 @@ public:
 		virtual void draw();
 		virtual void update();
 
+
 		engineObject(
 			const SDL_FRect& hull = { 0,0,10,10 },
-			SDL_Texture* tex = NULL,
+			std::vector<SDL_Texture*> textures = {},
 			double rot = 0,
 			bool centered = true,
 			bool fixed = false,
@@ -55,10 +56,13 @@ public:
 		std::function<void(std::shared_ptr<engineObject> obj)> onHover;
 		std::function<void(std::shared_ptr<engineObject> obj)> offHover;
 
+
 		void update();
+
+
 		buttonObject(
 			const SDL_FRect& hull = { 0, 0, 0, 0 },
-			SDL_Texture* tex = NULL,
+			std::vector<SDL_Texture*> textures = {},
 			double rot = 0,
 			bool centered = true,
 			bool fixed = true,

@@ -628,14 +628,14 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
         int32_t depth = Serialization::read_i32(buf, idx);
 
         // create ghost
-        auto ghost = std::make_shared<Object::engineObject>(SDL_FRect{ x,y,w,h }, nullptr, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
+        auto ghost = std::make_shared<Object::engineObject>(SDL_FRect{ x,y,w,h }, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
         ghost->texIndex = texIndex;
         ghost->updateFlag = false;
         // load texture now synchronously or asynchronously:
         // Option A: synchronous SDL_LoadTextureFromFile(texPath) and set ghost->tex vector
         // Option B: enqueue asset load on main thread and set texture later
         SDL_Texture* loaded = Texture::loadTex(texPath.c_str()); // implement this to be main-thread safe
-        if (loaded) ghost->tex.push_back(loaded), ghost->texIndex = 0;
+        if (loaded) ghost->textures.push_back(loaded), ghost->texIndex = 0;
 
         {
             std::lock_guard<std::mutex> lk(netObjects_mtx);
