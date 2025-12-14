@@ -26,6 +26,7 @@
     <ClCompile Include="CadEngine\Graphics\text.cpp" />
     <ClCompile Include="CadEngine\Graphics\texture.cpp" />
     <ClCompile Include="CadEngine\InputOutput\input.cpp" />
+    <ClCompile Include="CadEngine\InputOutput\lua.cpp" />
     <ClCompile Include="CadEngine\InputOutput\serialization.cpp" />
     <ClCompile Include="CadEngine\Network\network.cpp" />
     <ClCompile Include="CadEngine\Scene\object.cpp" />
@@ -42,6 +43,7 @@
     <ClInclude Include="CadEngine\Graphics\text.h" />
     <ClInclude Include="CadEngine\Graphics\texture.h" />
     <ClInclude Include="CadEngine\InputOutput\input.h" />
+    <ClInclude Include="CadEngine\InputOutput\lua.h" />
     <ClInclude Include="CadEngine\InputOutput\serialization.h" />
     <ClInclude Include="CadEngine\Network\network.h" />
     <ClInclude Include="CadEngine\Scene\object.h" />

@@ -38,7 +38,7 @@ public:
         
    static void scanAssetDirectory(const std::string& folder);
    
-   static assetInfo loadMetadata(const std::string& fullPath);
+   static std::optional<Asset::assetInfo> loadMetadata(const std::string& fullPath);
 
    static const assetInfo* get(std::string id);
 
@@ -46,7 +46,7 @@ public:
 
    static std::string GenerateUUID();
 
-   static void CreateDummyTextureAsset();
+   static void CreateDummyAsset();
 
    static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObject> obj)> loader, Asset::assetType type = assetType::Unknown);
    

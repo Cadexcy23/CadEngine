@@ -8,6 +8,7 @@
 #include "../Graphics/text.h"
 #include "../Graphics/texture.h"
 #include "../InputOutput/input.h"
+#include "../InputOutput/lua.h"
 #include "../InputOutput/serialization.h"
 #include "../Network/network.h"
 #include "../Scene/asset.h"

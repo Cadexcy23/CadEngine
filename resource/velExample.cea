@@ -23,5 +23,9 @@
     "drawFlag": true,
     "updateFlag": true,
 	"velocity": [100, 100],
-	"spin": 360
+	"spin": 360,
+	"scripts": [
+        "resource/velExample.lua",
+		"resource/rotate.lua"
+    ]
 }

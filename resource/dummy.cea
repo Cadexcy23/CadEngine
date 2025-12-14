@@ -1,5 +1,5 @@
 {
-    "id": "2f2cec472f3389f38088f34bfb2982d8",
+    "id": "6cdc2703ec9ef30856f4586748cb4a12",
     "type": "EngineObject",
     "textures": [
         "resource/test.png",
@@ -20,5 +20,8 @@
     "depth": 0,
     "drawDefault": true,
     "drawFlag": true,
-    "updateFlag": true
+    "updateFlag": true,
+    "scripts": [
+        "resource/rotate.lua"
+    ]
 }

@@ -57,6 +57,9 @@
     <ClCompile Include="CadEngine\Scene\asset.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CadEngine\InputOutput\lua.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CadEngine\Core\engine.h">
@@ -99,6 +102,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CadEngine\Scene\asset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CadEngine\InputOutput\lua.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

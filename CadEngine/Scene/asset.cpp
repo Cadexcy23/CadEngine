@@ -3,6 +3,7 @@
 #include <chrono>
 #include <filesystem>
 #include "../Core/engine.h"
+#include "../InputOutput/lua.h"
 
 
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;
@@ -29,30 +30,80 @@ inline std::string Asset::GenerateUUID()
 }
 
 void Asset::scanAssetDirectory(const std::string& folder) {
+    size_t loaded = 0;
+
     for (auto& entry : fs::recursive_directory_iterator(folder)) {
         if (entry.path().extension() == ".cea") {
-            assetInfo info = loadMetadata(entry.path().string());
-            registry[info.id] = info;
+            auto meta = loadMetadata(entry.path().string());
+
+            if (!meta.has_value()) {
+                // Failed to load, skip but continue scanning
+                continue;
+            }
+
+            registry[meta->id] = *meta;
+            loaded++;
         }
     }
-    // Log the loaded assets
-	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "%i assets loaded from %s", registry.size(), folder.c_str());
+
+    Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info,
+        "%i assets loaded from %s", (int)loaded, folder.c_str());
 }
 
-Asset::assetInfo Asset::loadMetadata(const std::string& fullPath) {
+std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath) {
+    // Check file exists
     std::ifstream f(fullPath);
-    json j;
-    f >> j;
+    if (!f.is_open()) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+            "Asset error: Could not open asset file: %s", fullPath.c_str());
+        return std::nullopt;
+    }
 
+    json j;
+    try {
+        f >> j;
+    }
+    catch (const std::exception& e) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+            "Asset error: JSON parse failure in %s — %s",
+            fullPath.c_str(), e.what());
+        return std::nullopt;
+    }
+
+    // Validate required fields
+    if (!j.contains("id") || !j.contains("type")) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+            "Asset error: Missing required fields ('id', 'type') in %s",
+            fullPath.c_str());
+        return std::nullopt;
+    }
+
+    if (!j["id"].is_string() || !j["type"].is_string()) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+            "Asset error: 'id' and 'type' must be strings in %s",
+            fullPath.c_str());
+        return std::nullopt;
+    }
+
+    std::string typeStr = j["type"].get<std::string>();
+
+    // Validate loader exists
+    if (loaders.find(typeStr) == loaders.end()) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+            "Asset error: Unknown asset type '%s' in %s",
+            typeStr.c_str(), fullPath.c_str());
+        return std::nullopt;
+    }
+
+    // Construct metadata
     assetInfo info;
     info.id = j["id"].get<std::string>();
     info.assetFilePath = fullPath;
-
-    std::string typeS = j["type"].get<std::string>();
-    info.type = loaders[typeS].type;
+    info.type = loaders[typeStr].type;
 
     return info;
 }
+
 
 const Asset::assetInfo* Asset::get(std::string id) {
     auto it = registry.find(id);
@@ -89,6 +140,14 @@ void Asset::defaultLoad(json j, std::shared_ptr<Object::engineObject> obj) {
     obj->drawDefault = j.value("drawDefault", true);
     obj->drawFlag = j.value("drawFlag", true);
     obj->updateFlag = j.value("updateFlag", true);
+
+    // load scripts
+    if (j.contains("scripts")) {
+        for (const auto& scriptPath : j["scripts"]) {
+            std::string path = scriptPath.get<std::string>();
+            Lua::attachScript(path, obj);
+        }
+    }
 }
 
 void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObject> obj)> loader, Asset::assetType type) {
@@ -99,7 +158,7 @@ void Asset::registerObjectType(std::string name, std::function<void(const json j
 	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
 }
 
-void Asset::CreateDummyTextureAsset()
+void Asset::CreateDummyAsset()
 {
     // Check if directory exists
     std::filesystem::path dirPath = "resource";
@@ -125,6 +184,7 @@ void Asset::CreateDummyTextureAsset()
     j["drawDefault"] = true;
     j["drawFlag"] = true;
     j["updateFlag"] = true;
+    j["scripts"] = {"resource/rotate.lua"};
 
     std::ofstream f("resource/dummy.cea");
     if (!f.is_open()) {
