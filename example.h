@@ -4,7 +4,7 @@
 static class Example {
 public:
 
-	struct velObject : public Object::engineObject
+	struct velObject : public Object::engineObject<velObject>
 	{
 		SDL_FPoint vel;
 		double spin;

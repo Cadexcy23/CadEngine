@@ -26,7 +26,7 @@ public:
     struct netObject {
         uint32_t netID;
         //tick rate?
-        std::shared_ptr<Object::engineObject> obj;
+        std::shared_ptr<Object::engineObjectBase> obj;
         std::string texturePath;//get rid of and come up with a better solution, premade objects?
     };
 
@@ -99,7 +99,7 @@ public:
         bool pollEvent(NetworkEvent& out) { return events.poll(out); }
 
         void broadcastSnapshotToAllClients(uint32_t tick);
-        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObject> obj, const std::string& texture_path);
+        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObjectBase> obj, const std::string& texture_path);
         void broadcastDespawn(uint32_t id);
         void auditNetObjects();
 

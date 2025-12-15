@@ -8,7 +8,7 @@
 
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;
 std::unordered_map<std::string, Asset::assetInfo> Asset::registry;
-std::unordered_map<std::string, std::weak_ptr<Object::engineObject>> Asset::cache;
+std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> Asset::cache;
 
 
 namespace fs = std::filesystem;//dont do this
@@ -104,53 +104,52 @@ std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath)
     return info;
 }
 
-
 const Asset::assetInfo* Asset::get(std::string id) {
     auto it = registry.find(id);
     if (it == registry.end()) return nullptr;
     return &it->second;
 }
 
-void Asset::defaultLoad(json j, std::shared_ptr<Object::engineObject> obj) {
-    // load textures
-    if (j.contains("textures")) {
-        for (const auto& texPath : j["textures"]) {
-            SDL_Texture* t = Texture::loadTex(texPath.get<std::string>().c_str());
-            if (t) obj->textures.push_back(t);
-        }
-    }
-    if (!obj->textures.size())
-        obj->textures.push_back(Texture::loadTex("resource/icon.png"));
+//void Asset::defaultLoad(json j, std::shared_ptr<Object::engineObjectBase> obj) {
+//    // load textures
+//    if (j.contains("textures")) {
+//        for (const auto& texPath : j["textures"]) {
+//            SDL_Texture* t = Texture::loadTex(texPath.get<std::string>().c_str());
+//            if (t) obj->textures.push_back(t);
+//        }
+//    }
+//    if (!obj->textures.size())
+//        obj->textures.push_back(Texture::loadTex("resource/icon.png"));
+//
+//    obj->texIndex = j.value("texIndex", 0);
+//
+//    // load hull
+//    obj->hull = { 0,0,10,10 };
+//    if (j.contains("hull")) {
+//        auto h = j["hull"];
+//        obj->hull = { h[0], h[1], h[2], h[3] };
+//    }
+//
+//    obj->centered = j.value("centered", true);
+//    obj->fixed = j.value("fixed", false);
+//    obj->flip = static_cast<SDL_FlipMode>(j.value("flip", 0));
+//    obj->scale = j.value("scale", 1.0f);
+//    obj->rot = j.value("rot", 0.0);
+//    obj->depth = j.value("depth", 0);
+//    obj->drawDefault = j.value("drawDefault", true);
+//    obj->drawFlag = j.value("drawFlag", true);
+//    obj->updateFlag = j.value("updateFlag", true);
+//
+//    // load scripts
+//    if (j.contains("scripts")) {
+//        for (const auto& scriptPath : j["scripts"]) {
+//            std::string path = scriptPath.get<std::string>();
+//            Lua::attachScript(path, obj);
+//        }
+//    }
+//}
 
-    obj->texIndex = j.value("texIndex", 0);
-
-    // load hull
-    obj->hull = { 0,0,10,10 };
-    if (j.contains("hull")) {
-        auto h = j["hull"];
-        obj->hull = { h[0], h[1], h[2], h[3] };
-    }
-
-    obj->centered = j.value("centered", true);
-    obj->fixed = j.value("fixed", false);
-    obj->flip = static_cast<SDL_FlipMode>(j.value("flip", 0));
-    obj->scale = j.value("scale", 1.0f);
-    obj->rot = j.value("rot", 0.0);
-    obj->depth = j.value("depth", 0);
-    obj->drawDefault = j.value("drawDefault", true);
-    obj->drawFlag = j.value("drawFlag", true);
-    obj->updateFlag = j.value("updateFlag", true);
-
-    // load scripts
-    if (j.contains("scripts")) {
-        for (const auto& scriptPath : j["scripts"]) {
-            std::string path = scriptPath.get<std::string>();
-            Lua::attachScript(path, obj);
-        }
-    }
-}
-
-void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObject> obj)> loader, Asset::assetType type) {
+void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type) {
     if (type == assetType::Unknown) 
         type = static_cast<assetType>(100 + loaders.size());
     loaders[name] = {name, loader, type};

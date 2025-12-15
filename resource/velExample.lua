@@ -17,6 +17,8 @@ function onCreate(obj)
 	
 	--engine.log(tostring(engine.isKeyPressed("V")))
 	
+	engine.log("Spawned!")
+	engine.log(tostring(obj.spin)) -- this should NOT be 0, fix it Caden!
 	engine.log(obj)
 end
 	
@@ -35,5 +37,6 @@ function update(obj)
     --obj.vel.x = 0.99 * obj.vel.x -- Apply friction
 	--obj.vel.y = 0.99 * obj.vel.y
     --obj.spin = spin * 0.95  -- Slow down spin
+	
 end
 

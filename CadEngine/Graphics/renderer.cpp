@@ -99,7 +99,7 @@ void Renderer::renderScreen()
 	SDL_SetRenderTarget(renderer, screenTex);
 }
 
-bool compDepth(std::shared_ptr<Object::engineObject> a, std::shared_ptr<Object::engineObject> b)
+bool compDepth(std::shared_ptr<Object::engineObjectBase> a, std::shared_ptr<Object::engineObjectBase> b)
 {
 	return a->depth > b->depth;
 }

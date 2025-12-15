@@ -12,8 +12,56 @@ public:
     static void cleanup();
 
     static bool loadScript(const std::string& scriptPath);
-    static void attachScript(const std::string& scriptPath,
-        std::shared_ptr<Object::engineObject> obj);
+    template<typename T>
+    static void attachScript(const std::string& scriptPath, std::shared_ptr<T> obj) {
+        if (!initialized) return;
+
+        // Load or get cached environment
+        sol::environment& env = getScriptEnvironment(scriptPath);
+
+        // Handle update function
+        sol::optional<sol::protected_function> updateFunc = env["update"];
+        if (updateFunc) {
+            // Store as protected_function
+            sol::protected_function func = *updateFunc;
+
+            obj->addUpdateFunc([func](std::shared_ptr<T> derivedObj) {
+                try {
+                    sol::protected_function_result result = func(derivedObj);
+                    if (!result.valid()) {
+                        sol::error err = result;
+                        Logger::log(Logger::LogCategory::InputOutput,
+                            Logger::LogLevel::Error,
+                            "Update function error: %s", err.what());
+                    }
+                }
+                catch (const sol::error& e) {
+                    Logger::log(Logger::LogCategory::InputOutput,
+                        Logger::LogLevel::Error,
+                        "Update function exception: %s", e.what());
+                }
+                });
+        }
+
+        // Handle onCreate with protected_function
+        sol::optional<sol::protected_function> onCreateFunc = env["onCreate"];
+        if (onCreateFunc) {
+            try {
+                sol::protected_function_result result = (*onCreateFunc)(obj);
+                if (!result.valid()) {
+                    sol::error err = result;
+                    Logger::log(Logger::LogCategory::InputOutput,
+                        Logger::LogLevel::Error,
+                        "onCreate function error: %s", err.what());
+                }
+            }
+            catch (const sol::error& e) {
+                Logger::log(Logger::LogCategory::InputOutput,
+                    Logger::LogLevel::Error,
+                    "onCreate function exception: %s", e.what());
+            }
+        }
+    }
     template<typename Func>
     static bool registerEngineFunction(const std::string& name, Func&& func) {
         try {
@@ -42,8 +90,8 @@ public:
     }
     template<typename T, typename... Args>
     static bool registerType(const std::string& typeName, Args&&... args) {
-        static_assert(std::is_base_of_v<Object::engineObject, T>,
-            "Lua-registered types must inherit from engineObject");
+        static_assert(std::is_base_of_v<Object::engineObjectBase, T>,
+            "Lua-registered types must inherit from engineObjectBase");
         try {
             // Store arguments by value
             auto reg = [typeName, args...](sol::state& lua) mutable {
@@ -51,7 +99,7 @@ public:
                 auto tuple = std::make_tuple(args...);
                 std::apply([&](auto&... tupleArgs) {
                     lua.new_usertype<T>(typeName,
-                        sol::base_classes, sol::bases<Object::engineObject>(),
+                        sol::base_classes, sol::bases<Object::engineObjectBase>(),
                         tupleArgs...
                         );
                     }, tuple);
@@ -107,7 +155,7 @@ public:
         }
     }
 
-    using TypeRegistration = std::function<void(sol::state&)>;
+    using TypeRegistration = std::function<void(sol::state&)>; //need?
     using EngineFunctionRegistration = std::function<void(sol::state&)>;
 private:
 
@@ -116,4 +164,18 @@ private:
     static std::unordered_map<std::string, EngineFunctionRegistration> engineFunctionRegistrations;
     static std::unordered_map<std::string, sol::environment> scriptEnvironments;
     static bool initialized;
+
+    static sol::environment& getScriptEnvironment(const std::string& scriptPath) {
+        auto it = scriptEnvironments.find(scriptPath);
+        if (it == scriptEnvironments.end()) {
+            sol::environment env(lua, sol::create, lua.globals());
+            auto result = lua.safe_script_file(scriptPath, env);
+            if (!result.valid()) {
+                throw std::runtime_error("Failed to load script: " + scriptPath);
+            }
+            scriptEnvironments[scriptPath] = env;
+            it = scriptEnvironments.find(scriptPath);
+        }
+        return it->second;
+    }
 };

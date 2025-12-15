@@ -16,26 +16,26 @@ void Lua::init() {
     Lua::initialized = true;
 
     // Register engineObject to Lua
-    lua.new_usertype<Object::engineObject>("engineObject",
+    lua.new_usertype<Object::engineObjectBase>("engineObject",
         // Properties
-        "scale", &Object::engineObject::scale,
-        "rotation", &Object::engineObject::rot,
-        "depth", &Object::engineObject::depth,
-        "drawFlag", &Object::engineObject::drawFlag,
-        "updateFlag", &Object::engineObject::updateFlag,
+        "scale", &Object::engineObjectBase::scale,
+        "rotation", &Object::engineObjectBase::rot,
+        "depth", &Object::engineObjectBase::depth,
+        "drawFlag", &Object::engineObjectBase::drawFlag,
+        "updateFlag", &Object::engineObjectBase::updateFlag,
 
         // Methods
-        "getPosition", [](Object::engineObject& obj) {
+        "getPosition", [](Object::engineObjectBase& obj) {
             return std::make_tuple(obj.hull.x, obj.hull.y);
         },
-        "setPosition", [](Object::engineObject& obj, float x, float y) {
+        "setPosition", [](Object::engineObjectBase& obj, float x, float y) {
             obj.hull.x = x;
             obj.hull.y = y;
         },
-        "getSize", [](Object::engineObject& obj) {
+        "getSize", [](Object::engineObjectBase& obj) {
             return std::make_tuple(obj.hull.w, obj.hull.h);
         },
-        "setTexture", [](Object::engineObject& obj, int index) {
+        "setTexture", [](Object::engineObjectBase& obj, int index) {
             if (index >= 0 && index < obj.textures.size()) {
                 obj.texIndex = index;
             }
@@ -97,55 +97,56 @@ bool Lua::loadScript(const std::string& scriptPath) {
     }
 }
 
-void Lua::attachScript(const std::string& scriptPath,
-    std::shared_ptr<Object::engineObject> obj) {
-    auto it = scriptEnvironments.find(scriptPath);
-    if (it == scriptEnvironments.end()) {
-        if (!loadScript(scriptPath)) {
-            return;
-        }
-        it = scriptEnvironments.find(scriptPath);
-    }
-
-    sol::environment& env = it->second;
-
-    // Check if the script has an update function
-    sol::optional<sol::protected_function> updateFunc = env["update"];
-    if (updateFunc) {
-        obj->updateFuncs.push_back([env, updateFunc](std::shared_ptr<Object::engineObject> o) {
-            try {
-                sol::protected_function_result result = (*updateFunc)(o);
-                if (!result.valid()) {
-                    sol::error err = result;
-                    Logger::log(Logger::LogCategory::InputOutput,
-                        Logger::LogLevel::Error,
-                        "Update function error: %s", err.what());
-                }
-            }
-            catch (const sol::error& e) {
-                Logger::log(Logger::LogCategory::InputOutput,
-                    Logger::LogLevel::Error,
-                    "Update function exception: %s", e.what());
-            }
-            });
-    }
-
-    // Call onCreate if it exists
-    sol::optional<sol::protected_function> onCreateFunc = env["onCreate"];
-    if (onCreateFunc) {
-        try {
-            sol::protected_function_result result = (*onCreateFunc)(obj);
-            if (!result.valid()) {
-                sol::error err = result;
-                Logger::log(Logger::LogCategory::InputOutput,
-                    Logger::LogLevel::Error,
-                    "onCreate function error: %s", err.what());
-            }
-        }
-        catch (const sol::error& e) {
-            Logger::log(Logger::LogCategory::InputOutput,
-                Logger::LogLevel::Error,
-                "onCreate function exception: %s", e.what());
-        }
-    }
-}
+//void Lua::attachScript(const std::string& scriptPath,
+//    std::shared_ptr<Object::engineObject> obj) {
+//
+//    auto it = scriptEnvironments.find(scriptPath);
+//    if (it == scriptEnvironments.end()) {
+//        if (!loadScript(scriptPath)) {
+//            return;
+//        }
+//        it = scriptEnvironments.find(scriptPath);
+//    }
+//
+//    sol::environment& env = it->second;
+//
+//    // Check if the script has an update function
+//    sol::optional<sol::protected_function> updateFunc = env["update"];
+//    if (updateFunc) {
+//        obj->updateFuncs.push_back([env, updateFunc](std::shared_ptr<Object::engineObject> o) {
+//            try {
+//                sol::protected_function_result result = (*updateFunc)(o);
+//                if (!result.valid()) {
+//                    sol::error err = result;
+//                    Logger::log(Logger::LogCategory::InputOutput,
+//                        Logger::LogLevel::Error,
+//                        "Update function error: %s", err.what());
+//                }
+//            }
+//            catch (const sol::error& e) {
+//                Logger::log(Logger::LogCategory::InputOutput,
+//                    Logger::LogLevel::Error,
+//                    "Update function exception: %s", e.what());
+//            }
+//            });
+//    }
+//
+//    // Call onCreate if it exists
+//    sol::optional<sol::protected_function> onCreateFunc = env["onCreate"];
+//    if (onCreateFunc) {
+//        try {
+//            sol::protected_function_result result = (*onCreateFunc)(obj);
+//            if (!result.valid()) {
+//                sol::error err = result;
+//                Logger::log(Logger::LogCategory::InputOutput,
+//                    Logger::LogLevel::Error,
+//                    "onCreate function error: %s", err.what());
+//            }
+//        }
+//        catch (const sol::error& e) {
+//            Logger::log(Logger::LogCategory::InputOutput,
+//                Logger::LogLevel::Error,
+//                "onCreate function exception: %s", e.what());
+//        }
+//    }
+//}

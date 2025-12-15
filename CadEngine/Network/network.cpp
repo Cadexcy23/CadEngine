@@ -327,7 +327,7 @@ void Network::NetworkServer::broadcast(const void* data, size_t len)
     }
 }
 
-std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetworkObject( std::shared_ptr<Object::engineObject> obj, const std::string& texture_path) {
+std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetworkObject( std::shared_ptr<Object::engineObjectBase> obj, const std::string& texture_path) {
     uint32_t ID = nextNetID++;
 
     std::shared_ptr<Network::netObject> netObj;
@@ -628,7 +628,7 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
         int32_t depth = Serialization::read_i32(buf, idx);
 
         // create ghost
-        auto ghost = std::make_shared<Object::engineObject>(SDL_FRect{ x,y,w,h }, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
+        auto ghost = std::make_shared<Object::engineObjectBase>(SDL_FRect{ x,y,w,h }, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
         ghost->texIndex = texIndex;
         ghost->updateFlag = false;
         // load texture now synchronously or asynchronously:
@@ -652,7 +652,7 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
     }
     else if (type == NetMsgType::MSG_DESPAWN) {
         uint32_t id = Serialization::read_u32(buf, idx);
-        std::shared_ptr<Object::engineObject> toRemove;
+        std::shared_ptr<Object::engineObjectBase> toRemove;
         {
             std::lock_guard<std::mutex> lk(netObjects_mtx);
             auto it = netObjects.find(id);
