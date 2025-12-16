@@ -15,7 +15,7 @@ function onCreate(obj)
     --obj.velocity = {x = 100, y = 50}
     --obj.spin = 180
 	
-	--engine.log(tostring(engine.isKeyPressed("V")))
+	engine.log(tostring(engine.isKeyPressed("V")))
 	
 	engine.log("Spawned!")
 	engine.log(tostring(obj.spin)) -- this should NOT be 0, fix it Caden!
@@ -38,5 +38,23 @@ function update(obj)
 	--obj.vel.y = 0.99 * obj.vel.y
     --obj.spin = spin * 0.95  -- Slow down spin
 	
+	
+	if engine.isKeyPressed("W")
+	then 
+		obj.hull.y = obj.hull.y - 1
+		end
+	if engine.isKeyPressed("S")
+	then 
+		obj.hull.y = obj.hull.y + 1
+		end
+	if engine.isKeyPressed("A")
+	then 
+		obj.hull.x = obj.hull.x - 1
+		end
+	if engine.isKeyPressed("D")
+	then 
+		obj.hull.x = obj.hull.x + 1
+		end
+
 end
 

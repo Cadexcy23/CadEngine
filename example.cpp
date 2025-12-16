@@ -334,6 +334,12 @@ void exampleInit()
 			return "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ")";
 		}
 	);
+	Lua::registerTypeSimple<SDL_FRect>("SDL_FRect",
+		"x", &SDL_FRect::x,
+		"y", &SDL_FRect::y,
+		"w", &SDL_FRect::w,
+		"h", &SDL_FRect::h
+	);
 	// register velObject as a lua type
 	Lua::registerType<Example::velObject>("VelObject",
 		"vel", &Example::velObject::vel,

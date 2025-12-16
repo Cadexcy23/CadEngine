@@ -23,6 +23,7 @@ void Lua::init() {
         "depth", &Object::engineObjectBase::depth,
         "drawFlag", &Object::engineObjectBase::drawFlag,
         "updateFlag", &Object::engineObjectBase::updateFlag,
+        "hull", &Object::engineObjectBase::hull,
 
         // Methods
         "getPosition", [](Object::engineObjectBase& obj) {
