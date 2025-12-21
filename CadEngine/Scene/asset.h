@@ -18,7 +18,9 @@ public:
         EngineObject,
         ButtonObject,
         Texture,
-        // custom types added dynamically starting at 100
+        Sound,
+        COUNT
+        // custom types added dynamically starting at COUNT
     };
 
     struct assetLoader {
@@ -33,6 +35,10 @@ public:
         std::string assetFilePath;
     };
 
+   
+    
+
+
    static void scanAssetDirectory(const std::string& folder);
    static std::optional<Asset::assetInfo> loadMetadata(const std::string& fullPath);
    static const assetInfo* get(std::string id);
@@ -44,19 +50,27 @@ public:
    static std::unordered_map<std::string, assetLoader> loaders;
    static std::unordered_map<std::string, assetInfo> registry;
    static std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> cache;
-   /*template<typename Derived>
-   static std::unordered_map<std::string, std::function<void(std::shared_ptr<Derived>)>> funcRegistry;*/
+   static std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> funcRegistry;
+   
 
-   //template<typename Derived>
-   //static void registerObjectFunc(const std::string& name, std::function<void(std::shared_ptr<Derived>)> func) {
-	  // //add check for unique name
-   //    funcRegistry[name] = func;
-   //}
-   /*template<typename Derived>
-   static std::function<void(std::shared_ptr<Derived>)> getObjectFunc(const std::string& name) {
+   template<typename Derived>
+   static void registerObjectFunc(const std::string& name,
+       std::function<void(std::shared_ptr<Derived>)> func) {
+       // Add check for unique name, overwrite but send a message
+       // Wrap the function to handle type casting
+       funcRegistry[name] = [func](std::shared_ptr<Object::engineObjectBase> obj) {
+           if (auto derived = std::dynamic_pointer_cast<Derived>(obj)) {
+               func(derived);
+           }
+       };
+       Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered object function \"%s\".", name.c_str());
+   }
+   static std::function<void(std::shared_ptr<Object::engineObjectBase>)> getObjectFunc(const std::string& name) {
        auto it = funcRegistry.find(name);
        return (it != funcRegistry.end()) ? it->second : nullptr;
-   }*/
+   }
+
+
    template<typename T>
    static void defaultLoad(const json& j, std::shared_ptr<T> obj) {
        // load textures
@@ -91,6 +105,70 @@ public:
        obj->drawDefault = j.value("drawDefault", true);
        obj->drawFlag = j.value("drawFlag", true);
        obj->updateFlag = j.value("updateFlag", true);
+
+       // load functions
+       if (j.contains("functions")) {
+           const auto& functions = j["functions"];
+
+           // Load draw functions
+           if (functions.contains("draw")) {
+               for (const auto& funcName : functions["draw"]) {
+                   std::string name = funcName.get<std::string>();
+                   if (auto func = getObjectFunc(name)) {
+                       obj->addDrawFunc(func);
+                   }
+                   else {
+                       Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+                           "Draw function '%s' not found in asset %s",
+                           name.c_str(), j.value("id", "unknown").c_str());
+                   }
+               }
+           }
+           // Load update functions
+           if (functions.contains("update")) {
+               for (const auto& funcName : functions["update"]) {
+                   std::string name = funcName.get<std::string>();
+                   if (auto func = getObjectFunc(name)) {
+                       obj->addUpdateFunc(func);
+                   }
+                   else {
+                       Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+                           "Update function '%s' not found in asset %s",
+                           name.c_str(), j.value("id", "unknown").c_str());
+                   }
+               }
+           }
+           // Load spawn functions
+           if (functions.contains("spawn")) {
+               for (const auto& funcName : functions["spawn"]) {
+                   std::string name = funcName.get<std::string>();
+                   if (auto func = getObjectFunc(name)) {
+                       obj->addSpawnFunc(func);
+                   }
+                   else {
+                       Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+                           "Spawn function '%s' not found in asset %s",
+                           name.c_str(), j.value("id", "unknown").c_str());
+                   }
+               }
+           }
+           // Load despawn functions
+           if (functions.contains("despawn")) {
+               for (const auto& funcName : functions["despawn"]) {
+                   std::string name = funcName.get<std::string>();
+                   if (auto func = getObjectFunc(name)) {
+                       obj->addDespawnFunc(func);
+                   }
+                   else {
+                       Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+                           "Despawn function '%s' not found in asset %s",
+                           name.c_str(), j.value("id", "unknown").c_str());
+                   }
+               }
+           }
+           
+
+       }
 
        // load scripts
        if (j.contains("scripts")) {

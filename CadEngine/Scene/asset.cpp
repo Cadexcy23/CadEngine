@@ -9,9 +9,7 @@
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;
 std::unordered_map<std::string, Asset::assetInfo> Asset::registry;
 std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> Asset::cache;
-//template<typename Derived>
-//std::unordered_map<std::string, std::function<void(std::shared_ptr<Derived>)>> Asset::funcRegistry;
-
+std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> Asset::funcRegistry;
 
 inline std::string Asset::GenerateUUID()
 {
@@ -108,8 +106,8 @@ const Asset::assetInfo* Asset::get(std::string id) {
 }
 
 void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type) {
-    if (type == assetType::Unknown) 
-        type = static_cast<assetType>(100 + loaders.size());
+    if (type == assetType::Unknown)
+        type = static_cast<assetType>(int(assetType::COUNT) + loaders.size());
     loaders[name] = {name, loader, type};
 
 	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
@@ -155,11 +153,11 @@ void Asset::CreateDummyAsset()
 
 void Asset::init()
 {
-    //register object types
+    // Register asset types
     registerObjectType("engineObject", nullptr, assetType::EngineObject);
     registerObjectType("buttonObject", nullptr, assetType::ButtonObject);
 
-	//scan library
+	// Scan library
     scanAssetDirectory("resource/");
 
     // Generate new dummy

@@ -109,9 +109,7 @@ void steer(std::shared_ptr<Object::engineObjectBase> obj)
 void spawnTest(float x, float y, const std::string& texturePath)  {
 	auto obj = Scene::addObject(Asset::load<Example::velObject>("51eef2418bd189a9977230ec58838030"));
 	
-	/*obj->addUpdateFunc(keepInScreen);
-	obj->addUpdateFunc(tempUpdateFunc);
-	obj->addUpdateFunc(keyboardControl);*/
+	
 	 
 	
 	//auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 });
@@ -343,8 +341,9 @@ void exampleInit()
 	Text::loadFont("resource/font/segoeuithisi.ttf", 32);
 
 	//register engine object functions
-	//Asset::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
-	
+	Asset::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
+	Asset::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
+	Asset::registerObjectFunc<Example::velObject>("steer", steer);
 }
 
 void exampleLoad()
@@ -409,26 +408,23 @@ void exampleLoad()
 
 int main(int argc, char* argv[])
 {
-	//Initialize Engine 
+	//Initialize Engine (subsystems, window, renderer, etc)
 	Engine::initEngine();
 
-	//TEMP INIT
-	Lua::init();
-
-	//Initialize 
+	//Initialize example (load custom objects, lua bindings, etc)
 	exampleInit();
 
-	//TEMP INIT
+	//Initialize asset system (after engine init and example init)
 	Asset::init();
 
-	//Load sxample scene
+	//Load example scene (after everything is registered)
 	exampleLoad();
 
 	while (!Engine::quit) {
 		//Process input
 		Engine::update();
 
-		//Update modules here
+		//Update custom project specific functionality
 		engineControls();
 
 		//Render scene
