@@ -1,27 +1,26 @@
 {
-    "id": "954555bf6abc32460d06a7c3b1433a89",
+    "id": "cb431606fdc5a2128b23bfcbdc4f042d",
     "type": "engineObject",
     "textures": [
-        "resource/test.png",
-        "resource/test2.png"
+        
     ],
     "texIndex": 0,
     "hull": [
+        1920,
+        1080,
         0,
-        0,
-        64,
-        64
+        0
     ],
-    "centered": true,
+    "centered": false,
     "fixed": false,
     "flip": 0,
     "scale": 1.0,
     "rot": 0.0,
-    "depth": 0,
+    "depth": -1,
     "drawDefault": true,
     "drawFlag": true,
     "updateFlag": true,
     "scripts": [
-        "resource/dummy.lua"
+        
     ]
 }

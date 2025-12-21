@@ -93,53 +93,6 @@ void Object::engineObjectBase::resetSize()
 	scale = 1;
 }
 
-void Object::engineObjectBase::update() {
-	//auto self = sharedFromDerived();
-
-	//// Process spawn functions
-	//for (auto& func : spawnFuncs) {
-	//	func(self);
-	//}
-	//spawnFuncs.clear();
-
-	//// Process update functions
-	//if (updateFlag) {
-	//	for (auto& func : updateFuncs) {
-	//		func(self);
-	//	}
-	//}
-}
-
-void Object::engineObjectBase::draw() {
-	if (drawFlag && inScreen())
-	{
-		//auto self = sharedFromDerived();
-		if (drawDefault)
-		{
-			SDL_FRect modHull = hull;
-			if (!fixed)
-			{
-				modHull.x -= Renderer::camPos.x;
-				modHull.y -= Renderer::camPos.y;
-				modHull.x *= Renderer::zoom;
-				modHull.y *= Renderer::zoom;
-				modHull.x += Renderer::baseRes.x / 2;
-				modHull.y += Renderer::baseRes.y / 2;
-
-				modHull.w *= Renderer::zoom;
-				modHull.h *= Renderer::zoom;
-			}
-			Texture::drawTex(textures[texIndex], modHull, rot, centered, flip, scale);
-		}
-		if (false) //FIX: need debug hull draw flag in renderer
-			drawHull();
-		/*for (auto& func : drawFuncs) {
-			func(self);
-		}*/
-	}
-}
-
-
 Object::engineObjectBase::engineObjectBase(
 	const SDL_FRect& hull,
 	std::vector<SDL_Texture*> textures,

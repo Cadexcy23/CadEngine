@@ -5,11 +5,11 @@
 #include "../sol.hpp"
 #include "../Scene/object.h"
 #include "../Core/logger.h"
+#include "../Core/time.h"
 
 class Lua {
 public:
     static void init();
-    static void cleanup();
 
     static bool loadScript(const std::string& scriptPath);
     template<typename T>
@@ -65,7 +65,7 @@ public:
     template<typename Func>
     static bool registerEngineFunction(const std::string& name, Func&& func) {
         try {
-            EngineFunctionRegistration reg = [name, func = std::forward<Func>(func)]
+            std::function<void(sol::state&)> reg = [name, func = std::forward<Func>(func)]
             (sol::state& lua) mutable {
                 lua["engine"][name] = func;
                 };
@@ -155,27 +155,13 @@ public:
         }
     }
 
-    using TypeRegistration = std::function<void(sol::state&)>; //need?
-    using EngineFunctionRegistration = std::function<void(sol::state&)>;
 private:
 
     static sol::state lua;
-    static std::unordered_map<std::string, TypeRegistration> typeRegistrations;
-    static std::unordered_map<std::string, EngineFunctionRegistration> engineFunctionRegistrations;
+    static std::unordered_map<std::string, std::function<void(sol::state&)>> typeRegistrations;
+    static std::unordered_map<std::string, std::function<void(sol::state&)>> engineFunctionRegistrations;
     static std::unordered_map<std::string, sol::environment> scriptEnvironments;
     static bool initialized;
 
-    static sol::environment& getScriptEnvironment(const std::string& scriptPath) {
-        auto it = scriptEnvironments.find(scriptPath);
-        if (it == scriptEnvironments.end()) {
-            sol::environment env(lua, sol::create, lua.globals());
-            auto result = lua.safe_script_file(scriptPath, env);
-            if (!result.valid()) {
-                throw std::runtime_error("Failed to load script: " + scriptPath);
-            }
-            scriptEnvironments[scriptPath] = env;
-            it = scriptEnvironments.find(scriptPath);
-        }
-        return it->second;
-    }
+    static sol::environment& getScriptEnvironment(const std::string& scriptPath);
 };

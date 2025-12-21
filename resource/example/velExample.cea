@@ -1,9 +1,10 @@
 {
-    "id": "e895a2662eaa6cb7cfa1236bca0b40b9",
-    "type": "EngineObject",
+    "id": "51eef2418bd189a9977230ec58838030",
+    "type": "velObject",
     "textures": [
         "resource/test.png",
-        "resource/test2.png"
+        "resource/test2.png",
+		"resource/icon.png"
     ],
     "texIndex": 0,
     "hull": [
@@ -20,5 +21,10 @@
     "depth": 0,
     "drawDefault": true,
     "drawFlag": true,
-    "updateFlag": true
+    "updateFlag": true,
+	"velocity": [0, 0],
+	"spin": 0,
+	"scripts": [
+        
+    ]
 }

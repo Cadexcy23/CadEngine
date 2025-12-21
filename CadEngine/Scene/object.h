@@ -14,11 +14,11 @@ public:
 	public:
 		std::vector<SDL_Texture*> textures;
 		int texIndex;
+		SDL_FRect hull;
 		bool centered;
 		bool fixed;
 		SDL_FlipMode flip;
 		float scale;
-		SDL_FRect hull;
 		double rot;
 		int depth;
 		bool drawDefault;
@@ -26,19 +26,15 @@ public:
 		bool updateFlag;
 		bool remove;
 		clock_t timeCreated;
-		/*std::vector<std::function<void(std::shared_ptr<Derived> obj)>> drawFuncs;
-		std::vector<std::function<void(std::shared_ptr<Derived> obj)>> updateFuncs;
-		std::vector<std::function<void(std::shared_ptr<Derived> obj)>> spawnFuncs;
-		std::vector<std::function<void(std::shared_ptr<Derived> obj)>> despawnFuncs;*/
 
 
-		virtual void drawHull();
-		SDL_FRect getBounds();
 		bool inScreen();
+		SDL_FRect getBounds();
 		virtual bool mouseInBounds();
 		void resetSize();
-		virtual void update();
-		virtual void draw();
+		virtual void update() {}
+		virtual void draw() {}
+		virtual void drawHull();
 
 
 		engineObjectBase(
@@ -63,21 +59,27 @@ public:
 		std::vector<std::function<void(std::shared_ptr<Derived>)>> despawnFuncs;
 
 	public:
-		// Typed function management
-		void addUpdateFunc(std::function<void(std::shared_ptr<Derived>)> func) {
+		int addDrawFunc(std::function<void(std::shared_ptr<Derived>)> func) {
+			drawFuncs.push_back(func);
+			return drawFuncs.size();
+		}
+		int addUpdateFunc(std::function<void(std::shared_ptr<Derived>)> func) {
 			updateFuncs.push_back(func);
+			return updateFuncs.size();
 		}
-
-		void addSpawnFunc(std::function<void(std::shared_ptr<Derived>)> func) {
+		int addSpawnFunc(std::function<void(std::shared_ptr<Derived>)> func) {
 			spawnFuncs.push_back(func);
+			return spawnFuncs.size();
+		}
+		int addDespawnFunc(std::function<void(std::shared_ptr<Derived>)> func) {
+			despawnFuncs.push_back(func);
+			return despawnFuncs.size();
 		}
 
-		// Get typed shared_ptr
 		std::shared_ptr<Derived> sharedFromDerived() {
 			return std::static_pointer_cast<Derived>(this->shared_from_this());
 		}
 
-		// Implementation of virtual methods
 		void update() override {
 			auto self = sharedFromDerived();
 
@@ -94,7 +96,6 @@ public:
 				}
 			}
 		}
-
 		void draw() override {
 			if (drawFlag && inScreen())
 			{
@@ -116,7 +117,7 @@ public:
 					}
 					Texture::drawTex(textures[texIndex], modHull, rot, centered, flip, scale);
 				}
-				if (false) //FIX: need debug hull draw flag in renderer
+				if (Renderer::hullDebugDraw)
 					drawHull();
 				for (auto& func : drawFuncs) {
 					func(self);

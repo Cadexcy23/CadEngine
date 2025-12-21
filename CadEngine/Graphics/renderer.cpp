@@ -15,6 +15,7 @@ SDL_FPoint Renderer::camPos = { 0, 0 };
 SDL_FRect Renderer::screenBounds = { 0, 0, baseRes.x, baseRes.y };
 SDL_FPoint Renderer::screenOffSet = { 0, 0 };
 double Renderer::screenRotation = 0;
+bool Renderer::hullDebugDraw = false;
 
 
 std::vector<std::string> splitString(const std::string& str, const std::string& delim = " ")

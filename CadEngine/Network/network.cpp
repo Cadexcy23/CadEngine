@@ -99,7 +99,7 @@ Network::NetworkServer::~NetworkServer()
 bool Network::NetworkServer::start(uint16_t port)
 {
     if (!winsock.ok()) {
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Server] Winsock not initialized.");
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Server winsock not initialized.");
         return false;
     }
 
@@ -243,7 +243,7 @@ void Network::NetworkServer::clientThreadFunc(SOCKET clientSocket)
         else {
             int err = WSAGetLastError();
             if (err == WSAEINTR || err == WSAENOTSOCK || !running) {
-                // likely from shutdown; treat as disconnected
+                // likely from shutdown, treat as disconnected
                 connectedLocal = false;
                 events.push( NetworkEventType::ClientDisconnected, clientSocket, "Client disconnected (error/shutdown)" );
                 break;
@@ -377,7 +377,7 @@ void Network::NetworkServer::broadcastDespawn(uint32_t id)
 {
     if (id == 0) { // <=0?
         Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Warn,
-            "[Net][Server] Tried to despawn object with invalid ID 0.");
+            "Server Tried to despawn object with invalid ID.");
         return;
     }
 
@@ -390,7 +390,7 @@ void Network::NetworkServer::broadcastDespawn(uint32_t id)
         }
         else {
             Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Warn,
-                "[Net][Server] Tried to despawn unknown netID %u", id);
+                "Server Tried to despawn unknown netID %u", id);
             return;
         }
     }
@@ -404,7 +404,7 @@ void Network::NetworkServer::broadcastDespawn(uint32_t id)
     broadcast(buf.data(), buf.size());
 
     Logger::log(Logger::LogCategory::Network, Logger::LogLevel::Trace,
-        "[Net][Server] Broadcasted despawn for ID %u", id);
+        "Server broadcasted despawn for ID %u", id);
 }
 
 void Network::NetworkServer::auditNetObjects()
@@ -419,7 +419,7 @@ void Network::NetworkServer::auditNetObjects()
     }
     for (uint32_t id : toRemove) {
 		broadcastDespawn(id);
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Trace, "[Net][Server] Removed netObject ID %u", id);
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Trace, "Server removed netObject ID %u", id);
     }
 }
 
@@ -475,7 +475,7 @@ Network::NetworkClient::~NetworkClient()
 bool Network::NetworkClient::connectTo(const std::string& ip, uint16_t port)
 {
     if (!winsock.ok()) {
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Client] Winsock not initialized.");
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Client winsock not initialized.");
         return false;
     }
 
@@ -493,7 +493,7 @@ bool Network::NetworkClient::connectTo(const std::string& ip, uint16_t port)
     addrinfo* result = nullptr;
     int iResult = getaddrinfo(ip.c_str(), portStr, &hints, &result);
     if (iResult != 0) {
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Client] getaddrinfo failed: %d", iResult);
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Client getaddrinfo failed: %d", iResult);
         events.push( NetworkEventType::Error, INVALID_SOCKET, "getaddrinfo failed" );
         return false;
     }
@@ -514,7 +514,7 @@ bool Network::NetworkClient::connectTo(const std::string& ip, uint16_t port)
     freeaddrinfo(result);
 
     if (connectSocket == INVALID_SOCKET) {
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Client] Unable to connect to %s:%u", ip.c_str(), port);
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Client unable to connect to %s:%u", ip.c_str(), port);
         events.push( NetworkEventType::Error, INVALID_SOCKET, "connect failed" );
         return false;
     }
@@ -523,7 +523,7 @@ bool Network::NetworkClient::connectTo(const std::string& ip, uint16_t port)
     connected = true;
     // spawn recv thread
     recvThread = std::thread(&NetworkClient::recvThreadFunc, this, sock);
-    Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Client] Connected to %s:%u (socket %d)", ip.c_str(), port, int(sock));
+    Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Client connected to %s:%u (socket %d)", ip.c_str(), port, int(sock));
     events.push( NetworkEventType::ClientConnectedToServer, sock, "Connected to server" );
     return true;
 }
@@ -540,7 +540,7 @@ void Network::NetworkClient::disconnect()
     }
 
     if (recvThread.joinable()) recvThread.join();
-    Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"[Net][Client] Disconnected.");
+    Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,"Client disconnected.");
     events.push( NetworkEventType::ClientDisconnectedFromServer, INVALID_SOCKET, "Disconnected" );
 }
 
@@ -567,7 +567,7 @@ bool Network::NetworkClient::sendData(const void* data, size_t len)
 
     if (result == SOCKET_ERROR) {
         Logger::log(Logger::LogCategory::General, Logger::LogLevel::Error,
-            "[Net][Client] send failed: %d", WSAGetLastError());
+            "Client send failed: %d", WSAGetLastError());
         events.push(NetworkEventType::Error, sock, "send failed");
         return false;
     }
@@ -608,8 +608,8 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
                 g->depth = depth;
             }
             else {
-                // object not found: request spawn? or ignore until next spawn arrives.
-                // If server always sends spawn first, this path shouldn't happen.
+                // object not found
+                // request spawn? or ignore?
             }
         }
     }
@@ -631,10 +631,8 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
         auto ghost = std::make_shared<Object::engineObjectBase>(SDL_FRect{ x,y,w,h }, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
         ghost->texIndex = texIndex;
         ghost->updateFlag = false;
-        // load texture now synchronously or asynchronously:
-        // Option A: synchronous SDL_LoadTextureFromFile(texPath) and set ghost->tex vector
-        // Option B: enqueue asset load on main thread and set texture later
-        SDL_Texture* loaded = Texture::loadTex(texPath.c_str()); // implement this to be main-thread safe
+        // load texture
+        SDL_Texture* loaded = Texture::loadTex(texPath.c_str()); // this should all be replaced with a load asset call
         if (loaded) ghost->textures.push_back(loaded), ghost->texIndex = 0;
 
         {
@@ -644,11 +642,7 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
             netObjects[id]->obj = ghost;
 			netObjects[id]->texturePath = texPath;
         }
-        {
-            //std::lock_guard<std::mutex> lk(activeObjects_mtx);
-            Scene::addObject(ghost);
-        }
-
+        Scene::addObject(ghost);
     }
     else if (type == NetMsgType::MSG_DESPAWN) {
         uint32_t id = Serialization::read_u32(buf, idx);
@@ -674,7 +668,7 @@ void Network::NetworkClient::recvThreadFunc(SOCKET inSock)
 
     while (connected.load()) {
 
-        // --- Step 1: Read message length ---
+        // Read message length
         if (expectedSize == 0) {
             uint32_t netLen;
             int bytes = recv(inSock, (char*)&netLen, sizeof(netLen), MSG_WAITALL);
@@ -686,7 +680,7 @@ void Network::NetworkClient::recvThreadFunc(SOCKET inSock)
             received = 0;
         }
 
-        // --- Step 2: Read message payload ---
+        // Read message payload
         int bytes = recv(inSock, (char*)buffer.data() + received,
             expectedSize - received, MSG_WAITALL);
 
@@ -694,7 +688,7 @@ void Network::NetworkClient::recvThreadFunc(SOCKET inSock)
 
         received += bytes;
 
-        // --- Complete message ---
+        // Complete message
         if (received == expectedSize) {
             if (onMessage) {
                 onMessage(buffer);  // automatic behavior can be swapped out or dissabled

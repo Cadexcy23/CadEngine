@@ -1,11 +1,11 @@
 #include "lua.h"
 #include <filesystem>
-#include "../Core/logger.h"
+#include "../InputOutput/input.h"
 
 
 sol::state Lua::lua;
-std::unordered_map<std::string, Lua::TypeRegistration> Lua::typeRegistrations;
-std::unordered_map<std::string, Lua::EngineFunctionRegistration> Lua::engineFunctionRegistrations;
+std::unordered_map<std::string, std::function<void(sol::state&)>> Lua::typeRegistrations;
+std::unordered_map<std::string, std::function<void(sol::state&)>> Lua::engineFunctionRegistrations;
 std::unordered_map<std::string, sol::environment> Lua::scriptEnvironments;
 bool Lua::initialized = false;
 
@@ -15,32 +15,19 @@ void Lua::init() {
         sol::lib::string, sol::lib::os);
     Lua::initialized = true;
 
-    // Register engineObject to Lua
-    lua.new_usertype<Object::engineObjectBase>("engineObject",
-        // Properties
-        "scale", &Object::engineObjectBase::scale,
-        "rotation", &Object::engineObjectBase::rot,
-        "depth", &Object::engineObjectBase::depth,
-        "drawFlag", &Object::engineObjectBase::drawFlag,
-        "updateFlag", &Object::engineObjectBase::updateFlag,
-        "hull", &Object::engineObjectBase::hull,
-
-        // Methods
-        "getPosition", [](Object::engineObjectBase& obj) {
-            return std::make_tuple(obj.hull.x, obj.hull.y);
-        },
-        "setPosition", [](Object::engineObjectBase& obj, float x, float y) {
-            obj.hull.x = x;
-            obj.hull.y = y;
-        },
-        "getSize", [](Object::engineObjectBase& obj) {
-            return std::make_tuple(obj.hull.w, obj.hull.h);
-        },
-        "setTexture", [](Object::engineObjectBase& obj, int index) {
-            if (index >= 0 && index < obj.textures.size()) {
-                obj.texIndex = index;
-            }
+    // register extra types to lua
+    Lua::registerTypeSimple<SDL_FPoint>("SDL_FPoint",
+        "x", &SDL_FPoint::x,
+        "y", &SDL_FPoint::y,
+        "__tostring", [](const SDL_FPoint& v) {
+            return "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ")";
         }
+    );
+    Lua::registerTypeSimple<SDL_FRect>("SDL_FRect",
+        "x", &SDL_FRect::x,
+        "y", &SDL_FRect::y,
+        "w", &SDL_FRect::w,
+        "h", &SDL_FRect::h
     );
 
     // Create a table for engine functions
@@ -51,10 +38,49 @@ void Lua::init() {
                 "%s", message.c_str());
         },
         "getDeltaTime", []() {
-            // Return your game's delta time
-            return 0.016f; // Placeholder
+            return Time::deltaTime;
+        },
+        "getDeltaSeconds", []() {
+            return Time::deltaSeconds;
+        },
+        "keyState", [](const char* key) {
+            int i = Input::keyStates[SDL_GetScancodeFromName(key)];
+            if (i > 0)
+                return i;
+            return NULL;
+        },
+        "screenBounds", Renderer::screenBounds
+    );
+
+    // Register engineObject to Lua
+    lua.new_usertype<Object::engineObjectBase>("engineObject",
+        // Properties
+        "texIndex", &Object::engineObjectBase::texIndex,
+        "hull", &Object::engineObjectBase::hull,
+        "centered", &Object::engineObjectBase::centered,
+        "fixed", &Object::engineObjectBase::fixed,
+        "flip", &Object::engineObjectBase::flip,
+        "scale", &Object::engineObjectBase::scale,
+        "rotation", &Object::engineObjectBase::rot,
+        "depth", &Object::engineObjectBase::depth,
+        "drawDefault", &Object::engineObjectBase::drawDefault,
+        "drawFlag", &Object::engineObjectBase::drawFlag,
+        "updateFlag", &Object::engineObjectBase::updateFlag,
+        "remove", &Object::engineObjectBase::remove,
+        "timeCreated", sol::readonly(&Object::engineObjectBase::timeCreated),
+
+        // Methods
+        "inScreen", & Object::engineObjectBase::inScreen,
+        "getBounds", &Object::engineObjectBase::getBounds,
+        "mouseInBounds", & Object::engineObjectBase::mouseInBounds,
+        "addTexture", [](Object::engineObjectBase& obj, int index) {
+            if (index >= 0 && index < obj.textures.size()) {
+                obj.texIndex = index;
+            }
         }
     );
+
+    
 }
 
 bool Lua::loadScript(const std::string& scriptPath) {
@@ -70,7 +96,6 @@ bool Lua::loadScript(const std::string& scriptPath) {
         sol::environment env(lua, sol::create, lua.globals());
         scriptEnvironments[scriptPath] = env;
 
-        // v3.3.0 way to load and execute
         sol::protected_function_result scriptResult = lua.safe_script_file(scriptPath, env);
 
         if (!scriptResult.valid()) {
@@ -98,56 +123,16 @@ bool Lua::loadScript(const std::string& scriptPath) {
     }
 }
 
-//void Lua::attachScript(const std::string& scriptPath,
-//    std::shared_ptr<Object::engineObject> obj) {
-//
-//    auto it = scriptEnvironments.find(scriptPath);
-//    if (it == scriptEnvironments.end()) {
-//        if (!loadScript(scriptPath)) {
-//            return;
-//        }
-//        it = scriptEnvironments.find(scriptPath);
-//    }
-//
-//    sol::environment& env = it->second;
-//
-//    // Check if the script has an update function
-//    sol::optional<sol::protected_function> updateFunc = env["update"];
-//    if (updateFunc) {
-//        obj->updateFuncs.push_back([env, updateFunc](std::shared_ptr<Object::engineObject> o) {
-//            try {
-//                sol::protected_function_result result = (*updateFunc)(o);
-//                if (!result.valid()) {
-//                    sol::error err = result;
-//                    Logger::log(Logger::LogCategory::InputOutput,
-//                        Logger::LogLevel::Error,
-//                        "Update function error: %s", err.what());
-//                }
-//            }
-//            catch (const sol::error& e) {
-//                Logger::log(Logger::LogCategory::InputOutput,
-//                    Logger::LogLevel::Error,
-//                    "Update function exception: %s", e.what());
-//            }
-//            });
-//    }
-//
-//    // Call onCreate if it exists
-//    sol::optional<sol::protected_function> onCreateFunc = env["onCreate"];
-//    if (onCreateFunc) {
-//        try {
-//            sol::protected_function_result result = (*onCreateFunc)(obj);
-//            if (!result.valid()) {
-//                sol::error err = result;
-//                Logger::log(Logger::LogCategory::InputOutput,
-//                    Logger::LogLevel::Error,
-//                    "onCreate function error: %s", err.what());
-//            }
-//        }
-//        catch (const sol::error& e) {
-//            Logger::log(Logger::LogCategory::InputOutput,
-//                Logger::LogLevel::Error,
-//                "onCreate function exception: %s", e.what());
-//        }
-//    }
-//}
+sol::environment& Lua::getScriptEnvironment(const std::string& scriptPath) {
+    auto it = scriptEnvironments.find(scriptPath);
+    if (it == scriptEnvironments.end()) {
+        sol::environment env(lua, sol::create, lua.globals());
+        auto result = lua.safe_script_file(scriptPath, env);
+        if (!result.valid()) {
+            throw std::runtime_error("Failed to load script: " + scriptPath);
+        }
+        scriptEnvironments[scriptPath] = env;
+        it = scriptEnvironments.find(scriptPath);
+    }
+    return it->second;
+}
