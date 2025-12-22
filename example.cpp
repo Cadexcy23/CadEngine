@@ -336,9 +336,9 @@ void exampleInit()
 	Text::loadFont("resource/font/segoeuithisi.ttf", 32);
 
 	//register engine object functions
-	Asset::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
-	Asset::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
-	Asset::registerObjectFunc<Object::engineObjectBase>("steer", steer);
+	Object::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
+	Object::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
+	Object::registerObjectFunc<Object::engineObjectBase>("steer", steer);
 }
 
 void exampleLoad()
@@ -347,10 +347,10 @@ void exampleLoad()
 	Renderer::camPos = { float(Renderer::baseRes.x / 2), float(Renderer::baseRes.y / 2) };
 
 	//BG
-	Scene::addObject(Asset::load<Example::velObject>("8bdf7db499ca7d7e0e8b83cb5c8ee486"));
+	Scene::addObject(Asset::load<Object::defaultObject>("8bdf7db499ca7d7e0e8b83cb5c8ee486"));
 	
 	//Watermark
-	auto watermark = Scene::addObject(Asset::load<Example::velObject>("cb431606fdc5a2128b23bfcbdc4f042d"));
+	auto watermark = Scene::addObject(Asset::load<Object::defaultObject>("cb431606fdc5a2128b23bfcbdc4f042d"));
 	watermark->textures[0] = Text::loadText("CadEngine", Text::loadFont("resource/font/segoeuithibd.ttf", 32));
 	watermark->resetSize();
 	watermark->hull.x -= watermark->hull.w;

@@ -9,7 +9,7 @@
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;
 std::unordered_map<std::string, Asset::assetInfo> Asset::registry;
 std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> Asset::cache;
-std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> Asset::funcRegistry;
+
 
 inline std::string Asset::GenerateUUID()
 {

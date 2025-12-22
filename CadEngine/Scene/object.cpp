@@ -1,7 +1,9 @@
 #include "object.h"
 #include "../Core/engine.h"
 
-//EngineObject
+std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> Object::funcRegistry;
+
+//EngineObjectBase
 void Object::engineObjectBase::drawHull()
 {
 	SDL_Color color = { 255, 255, 255, 255 };
@@ -114,7 +116,7 @@ Object::engineObjectBase::~engineObjectBase()
 	Logger::log(Logger::LogCategory::Engine, Logger::LogLevel::Trace, "EngineObject destroyed");
 }
 
-//BaseObject
+//DefaultObject
 Object::defaultObject::defaultObject(
 	const SDL_FRect& hull,
 	std::vector<SDL_Texture*> textures,

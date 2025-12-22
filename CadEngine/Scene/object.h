@@ -6,6 +6,11 @@
 #include <time.h>
 #include "../Graphics/renderer.h"
 #include "../Graphics/texture.h"
+#include "../Core/logger.h"
+
+#include "../json.hpp"
+
+using json = nlohmann::json;
 
 
 static class Object {
@@ -35,7 +40,7 @@ public:
 		virtual void update() {}
 		virtual void draw() {}
 		virtual void drawHull();
-
+		virtual void loadFunctions(const json& j) {};
 
 		engineObjectBase(
 			const SDL_FRect& hull = { 0,0,10,10 },
@@ -131,6 +136,66 @@ public:
 				}
 			}
 		}
+		void loadFunctions(const json& j) override {
+			const auto& functions = j["functions"];
+
+			// Load draw functions
+			if (functions.contains("draw")) {
+				for (const auto& funcName : functions["draw"]) {
+					std::string name = funcName.get<std::string>();
+					if (auto func = getObjectFunc(name)) {
+						addDrawFunc(func);
+					}
+					else {
+						Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+							"Draw function '%s' not found in asset %s",
+							name.c_str(), j.value("id", "unknown").c_str());
+					}
+				}
+			}
+			// Load update functions
+			if (functions.contains("update")) {
+				for (const auto& funcName : functions["update"]) {
+					std::string name = funcName.get<std::string>();
+					if (auto func = getObjectFunc(name)) {
+						addUpdateFunc(func);
+					}
+					else {
+						Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+							"Update function '%s' not found in asset %s",
+							name.c_str(), j.value("id", "unknown").c_str());
+					}
+				}
+			}
+			// Load spawn functions
+			if (functions.contains("spawn")) {
+				for (const auto& funcName : functions["spawn"]) {
+					std::string name = funcName.get<std::string>();
+					if (auto func = getObjectFunc(name)) {
+						addSpawnFunc(func);
+					}
+					else {
+						Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+							"Spawn function '%s' not found in asset %s",
+							name.c_str(), j.value("id", "unknown").c_str());
+					}
+				}
+			}
+			// Load despawn functions
+			if (functions.contains("despawn")) {
+				for (const auto& funcName : functions["despawn"]) {
+					std::string name = funcName.get<std::string>();
+					if (auto func = getObjectFunc(name)) {
+						addDespawnFunc(func);
+					}
+					else {
+						Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+							"Despawn function '%s' not found in asset %s",
+							name.c_str(), j.value("id", "unknown").c_str());
+					}
+				}
+			}
+		}
 
 		engineObject(
 			const SDL_FRect& hull = { 0,0,10,10 },
@@ -142,6 +207,11 @@ public:
 			float scale = 1.0f,
 			int depth = 0) 
 			: engineObjectBase(hull, textures, rot, 
+				centered, fixed, flip, scale, depth) {
+		}
+		engineObject(
+			engineObjectBase baseObj)
+			: engineObjectBase(hull, textures, rot,
 				centered, fixed, flip, scale, depth) {
 		}
 	};
@@ -179,5 +249,24 @@ public:
 			float scale = 1.0,
 			int depth = 0);
 	};
+
+	static std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> funcRegistry;
+
+	template<typename Derived>
+	static void registerObjectFunc(const std::string& name,
+		std::function<void(std::shared_ptr<Derived>)> func) {
+		// Add check for unique name, overwrite but send a message
+		// Wrap the function to handle type casting
+		funcRegistry[name] = [func](std::shared_ptr<Object::engineObjectBase> obj) {
+			if (auto derived = std::dynamic_pointer_cast<Derived>(obj)) {
+				func(derived);
+			}
+			};
+		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered object function \"%s\".", name.c_str());
+	}
+	static std::function<void(std::shared_ptr<Object::engineObjectBase>)> getObjectFunc(const std::string& name) {
+		auto it = funcRegistry.find(name);
+		return (it != funcRegistry.end()) ? it->second : nullptr;
+	}
 
 };

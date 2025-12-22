@@ -631,15 +631,23 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
         uint8_t flip = Serialization::read_u8(buf, idx);
         int32_t depth = Serialization::read_i32(buf, idx);
 
-        // create ghost
-        //auto ghost = std::make_shared<Object::defaultObject>(SDL_FRect{x,y,w,h}, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
-        auto ghost = Asset::load<Example::velObject>(assetID);
-        ghost->texIndex = texIndex;
-        ghost->updateFlag = false;
-        // load texture
-        //SDL_Texture* loaded = Texture::loadTex(assetID.c_str()); // this should all be replaced with a load asset call
-        //if (loaded) ghost->textures.push_back(loaded), ghost->texIndex = 0;
+        // Create ghost
+        auto ghost = Asset::load(assetID);
 
+		// Disable update flag for networked objects
+        ghost->updateFlag = false;
+
+		// Set initial state
+        ghost->hull.x = x;
+		ghost->hull.y = y;
+		ghost->hull.w = w;
+		ghost->hull.h = h;
+		ghost->rot = rot;
+        ghost->texIndex = texIndex;
+		ghost->scale = scale;
+		ghost->flip = static_cast<SDL_FlipMode>(flip);
+		ghost->depth = depth;
+        
         {
             std::lock_guard<std::mutex> lk(netObjects_mtx);
             netObjects[id] = std::make_unique<Network::netObject>();
