@@ -10,6 +10,8 @@ bool follow = false;
 
 
 //ENGINE OBJECTS FUNCS
+void spawnTest(float x, float y, const std::string& assetID);
+
 void perpetuate(std::shared_ptr<Example::velObject> obj)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
@@ -100,39 +102,31 @@ void steer(std::shared_ptr<Object::engineObjectBase> obj)
 	}
 }
 
+void timedDespawn(std::shared_ptr<Object::engineObjectBase> obj)
+{
+	if (clock() >= obj->timeCreated + 1000) {
+		obj->remove = true;
+	}
+}
+
+void duplicate(std::shared_ptr<Object::engineObjectBase> obj) {
+	int randomChance = rand() % 2;
+	if (randomChance == 1)
+		spawnTest(obj->hull.x, obj->hull.y, "51eef2418bd189a9977230ec58838030");
+}
+
+
 void spawnTest(float x, float y, const std::string& assetID)  {
 	auto obj = Scene::addObject(Asset::load<Example::velObject>(assetID));
-	
-	//netObjs.push_back(Network::server.registerAndSpawnNetworkObject(obj, assetID));
-	 
-	
-	//auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 });
-	// set server update funcs
-	/*p->addUpdateFunc(keepInScreen);
-	p->addUpdateFunc(steer);
-	p->addUpdateFunc(perpetuate);*/
-	obj->addUpdateFunc([](std::shared_ptr<Object::engineObjectBase> obj) {
-		if (clock() >= obj->timeCreated + 1000) {
-			obj->remove = true;
-		}
-		});
 
-	obj->addDespawnFunc([assetID](std::shared_ptr<Object::engineObjectBase> obj) {
-		int randomChance = rand() % 2;
-		if (randomChance == 1)
-			spawnTest(obj->hull.x, obj->hull.y, assetID);
-	});
-		
+	//move to lua start up script?
 	obj->hull.x = x;
 	obj->hull.y = y;
 	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
 	obj->vel = vel;
 	obj->rot = rand() % 360;
 	obj->scale = float(rand() % 1000) / 1000.0 + 0.5;
-	obj->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
-
-	//only run here when running a server with rendering active
-	//p->textures.push_back(Texture::loadTex(assetID.c_str()));
+	obj->spin = (double(rand() % 20000) / 1000.0 - 10.0) * 100;
 	
 	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(obj, assetID));
 }
@@ -148,7 +142,6 @@ void despawnTest() {
 
 void engineControls()
 {
-
 	/*if (follow && objs.size())
 	{
 		Renderer::camPos.x = objs.front()->hull.x;
@@ -212,6 +205,7 @@ void engineControls()
 		follow = !follow;
 	}
 	
+	// Spawn/despawn test object
 	if (Input::mouseStates[0])
 	{
 		spawnTest(Input::mousePos.x, Input::mousePos.y, "51eef2418bd189a9977230ec58838030");
@@ -221,7 +215,7 @@ void engineControls()
 		despawnTest();
 	}
 
-	//Networking
+	// Networking
 	if (Input::keyStates[SDL_SCANCODE_Z] == 1)
 	{
 		//Start server
@@ -252,21 +246,14 @@ void engineControls()
 			Network::client.disconnect();
 		}
 	}
+
+	// Create dummy asset
 	if (Input::keyStates[SDL_SCANCODE_C] == 1)
 	{
 		Asset::CreateDummyAsset();
 	}
-	if (Input::keyStates[SDL_SCANCODE_V] == 1)
-	{
-		auto obj = Scene::addObject(Asset::load<Example::velObject>("51eef2418bd189a9977230ec58838030"));
-	}
-	if (Input::keyStates[SDL_SCANCODE_B] == 1)
-	{
-		auto obj = Scene::addObject(Asset::load<Example::velObject>("52eef2418bd189a9977230ec58838030"));
-	}
-	
 
-	// custom process network messages
+	// Custom process network messages
 	Network::NetworkEvent e;
 	while (Network::server.pollEvent(e)) {
 		switch (e.type) {
@@ -302,6 +289,11 @@ void velLoad(const json j, std::shared_ptr<Object::engineObjectBase> obj)
 {
 	//downcast object
 	auto dObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+	if (!dObj) {
+		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+			"velLoad: Object is not of type velObject");
+		return;
+	}
 
 	//load custom properties
 	dObj->vel = { 0,0 };
@@ -321,10 +313,10 @@ void exampleInit()
 	Lua::registerType<Example::velObject>("velObject",
 		"vel", &Example::velObject::vel,
 		"spin", &Example::velObject::spin,
-		"flipVel", &Example::velObject::flipVel,
 		"flipVelX", [](Example::velObject& obj) { obj.vel.x *= -1; },
 		"flipVelY", [](Example::velObject& obj) { obj.vel.y *= -1; }
 	);
+
 	// register custom engine functions
 	Lua::registerEngineFunction("printObjectCount",
 		[]() {
@@ -338,7 +330,9 @@ void exampleInit()
 	//register engine object functions
 	Object::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
 	Object::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
-	Object::registerObjectFunc<Object::engineObjectBase>("steer", steer);
+	Object::registerObjectFunc<Object::engineObjectBase>("steer", steer); 
+	Object::registerObjectFunc<Object::engineObjectBase>("timedDespawn", timedDespawn);
+	Object::registerObjectFunc<Object::engineObjectBase>("duplicate", duplicate);
 }
 
 void exampleLoad()

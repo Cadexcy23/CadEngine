@@ -36,20 +36,16 @@ public:
         std::string assetFilePath;
     };
 
-   
     static void scanAssetDirectory(const std::string& folder);
     static std::optional<Asset::assetInfo> loadMetadata(const std::string& fullPath);
     static const assetInfo* get(std::string id);
     static std::string GenerateUUID();
     static void CreateDummyAsset();
-    //static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown);
     static void init();
 
     static std::unordered_map<std::string, assetLoader> loaders;
     static std::unordered_map<std::string, assetInfo> registry;
     static std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> cache;
-    
-    
     
     template<typename Derived>
     static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown) {
@@ -63,7 +59,6 @@ public:
 
         Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
     }
-
     static void defaultLoad(const json& j, std::shared_ptr<Object::engineObjectBase> obj) {
         // load textures
         if (j.contains("textures")) {
@@ -129,7 +124,6 @@ public:
 
         // Create the derived object
         auto obj = loaders.find(typeS)->second.creator();
-        //obj = std::dynamic_pointer_cast<Object::engineObject>(obj);
 
         // Default load
         defaultLoad(j, obj);
@@ -139,33 +133,6 @@ public:
             cusLoad(j, obj);
 
         return obj;
-
-        //// Get type from JSON
-        //std::string typeName = j["type"].get<std::string>();
-
-        //// Look up the loader
-        //auto it = loaders.find(typeName);
-        //if (it == loaders.end()) {
-        //    Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
-        //        "Unregistered object type: %s", typeName.c_str());
-        //    return nullptr;
-        //}
-
-        //// Create using registered creator
-        //auto obj = it->second.creator();
-        //if (!obj) {
-        //    return nullptr;
-        //}
-
-        //// Default load
-        //defaultLoad(j, obj);
-
-        //// Custom loader if available
-        //if (it->second.loader) {
-        //    it->second.loader(j, obj);
-        //}
-
-        //return obj;
     }
     template<typename T>
     static std::shared_ptr<T> load(const std::string& assetID) {

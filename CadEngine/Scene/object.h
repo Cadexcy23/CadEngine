@@ -4,11 +4,10 @@
 #include <functional>
 #include <memory>
 #include <time.h>
+#include "../json.hpp"
 #include "../Graphics/renderer.h"
 #include "../Graphics/texture.h"
 #include "../Core/logger.h"
-
-#include "../json.hpp"
 
 using json = nlohmann::json;
 
@@ -89,8 +88,10 @@ public:
 			auto self = sharedFromDerived();
 
 			// Process spawn functions
-			for (auto& func : spawnFuncs) {
-				func(self);
+			if (updateFlag) {
+				for (auto& func : spawnFuncs) {
+					func(self);
+				}
 			}
 			spawnFuncs.clear();
 
@@ -102,7 +103,7 @@ public:
 			}
 
 			// Process despawn functions
-			if (remove) {
+			if (remove && updateFlag) {
 				for (auto& func : despawnFuncs) {
 					func(self);
 				}
@@ -262,7 +263,8 @@ public:
 				func(derived);
 			}
 			};
-		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered object function \"%s\".", name.c_str());
+		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, 
+			"Registered object function \"%s\".", name.c_str());
 	}
 	static std::function<void(std::shared_ptr<Object::engineObjectBase>)> getObjectFunc(const std::string& name) {
 		auto it = funcRegistry.find(name);

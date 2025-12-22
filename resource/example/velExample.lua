@@ -60,7 +60,7 @@ function keepIn(obj)
 	end
 end
 
---this CAN be enabled but it is ill advised as even just having an empty update function DRASTICALLY increases memory usage an lowers performance
+--this CAN be enabled but it is ill advised as even just having an empty update function DRASTICALLY increases memory usage and lowers performance
 --function update(obj)
 	--deltaSeconds = engine:getDeltaSeconds()
 	--x = obj.hull.x

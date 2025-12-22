@@ -32,9 +32,10 @@
         "update": [
             "perpetuate",
             "keepInScreen",
-            "steer"
+            "steer",
+            "timedDespawn"
         ],
         "spawn": [],
-        "despawn": []
+        "despawn": ["duplicate"]
     }
 }

@@ -9,8 +9,6 @@
 #include "../Scene/scene.h"
 #include "../Scene/asset.h"
 
-//TEMP
-#include "../../example.h"
 
 Network::NetworkServer Network::server;
 Network::NetworkClient Network::client;
@@ -359,7 +357,6 @@ std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetw
     Serialization::append_uint8(buf, static_cast<uint8_t>(Network::NetMsgType::MSG_SPAWN));
     Serialization::append_u32(buf, ID);
     Serialization::append_string(buf, assetID);
-    //Serialization::append_u32(buf, assetID);
 
     // Initial transform state
     Serialization::append_float(buf, obj->hull.x);
