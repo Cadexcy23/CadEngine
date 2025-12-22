@@ -15,7 +15,7 @@ public:
 
     enum class assetType {
         Unknown = 0,
-        EngineObject,
+        DefaultObject,
         ButtonObject,
         Texture,
         Sound,
@@ -25,8 +25,9 @@ public:
 
     struct assetLoader {
         std::string name;
-        std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader;
         assetType type;
+        std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader;
+        std::function<std::shared_ptr<Object::engineObjectBase>()> creator;
 	};
 
     struct assetInfo {
@@ -36,26 +37,35 @@ public:
     };
 
    
+    static void scanAssetDirectory(const std::string& folder);
+    static std::optional<Asset::assetInfo> loadMetadata(const std::string& fullPath);
+    static const assetInfo* get(std::string id);
+    static std::string GenerateUUID();
+    static void CreateDummyAsset();
+    //static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown);
+    static void init();
+
+    static std::unordered_map<std::string, assetLoader> loaders;
+    static std::unordered_map<std::string, assetInfo> registry;
+    static std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> cache;
+    static std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> funcRegistry;
     
 
+    template<typename Derived>
+    static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown) {
+    if (type == assetType::Unknown)
+            type = static_cast<assetType>(int(assetType::COUNT) + loaders.size());
+        loaders[name] = { name, type, loader,  
+        []() -> std::shared_ptr<Object::engineObjectBase> { 
+                return std::make_shared<Derived>();
+            } 
+        };
 
-   static void scanAssetDirectory(const std::string& folder);
-   static std::optional<Asset::assetInfo> loadMetadata(const std::string& fullPath);
-   static const assetInfo* get(std::string id);
-   static std::string GenerateUUID();
-   static void CreateDummyAsset();
-   static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown);
-   static void init();
-
-   static std::unordered_map<std::string, assetLoader> loaders;
-   static std::unordered_map<std::string, assetInfo> registry;
-   static std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> cache;
-   static std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> funcRegistry;
-   
-
-   template<typename Derived>
-   static void registerObjectFunc(const std::string& name,
-       std::function<void(std::shared_ptr<Derived>)> func) {
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
+    }
+    template<typename Derived>
+    static void registerObjectFunc(const std::string& name,
+        std::function<void(std::shared_ptr<Derived>)> func) {
        // Add check for unique name, overwrite but send a message
        // Wrap the function to handle type casting
        funcRegistry[name] = [func](std::shared_ptr<Object::engineObjectBase> obj) {
@@ -65,14 +75,14 @@ public:
        };
        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered object function \"%s\".", name.c_str());
    }
-   static std::function<void(std::shared_ptr<Object::engineObjectBase>)> getObjectFunc(const std::string& name) {
+    static std::function<void(std::shared_ptr<Object::engineObjectBase>)> getObjectFunc(const std::string& name) {
        auto it = funcRegistry.find(name);
        return (it != funcRegistry.end()) ? it->second : nullptr;
    }
 
 
-   template<typename T>
-   static void defaultLoad(const json& j, std::shared_ptr<T> obj) {
+    template<typename T>
+    static void defaultLoad(const json& j, std::shared_ptr<T> obj) {
        // load textures
        if (j.contains("textures")) {
            for (const auto& texPath : j["textures"]) {
@@ -178,8 +188,8 @@ public:
            }
        }
    }
-   template<typename T>
-   static std::shared_ptr<T> load(const std::string& id) {
+    template<typename T>
+    static std::shared_ptr<T> load(const std::string& id) {
        static_assert(std::is_base_of_v<Object::engineObjectBase, T>,
            "T must inherit from engineObjectBase");
 

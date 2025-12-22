@@ -105,13 +105,13 @@ const Asset::assetInfo* Asset::get(std::string id) {
     return &it->second;
 }
 
-void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type) {
-    if (type == assetType::Unknown)
-        type = static_cast<assetType>(int(assetType::COUNT) + loaders.size());
-    loaders[name] = {name, loader, type};
-
-	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
-}
+//void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type) {
+//    if (type == assetType::Unknown)
+//        type = static_cast<assetType>(int(assetType::COUNT) + loaders.size());
+//    loaders[name] = {name, loader, type};
+//
+//	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
+//}
 
 void Asset::CreateDummyAsset()
 {
@@ -126,7 +126,7 @@ void Asset::CreateDummyAsset()
 
     nlohmann::ordered_json j;
     j["id"] = id;
-    j["type"] = "engineObject";
+    j["type"] = "defaultObject";
     j["textures"] = { "resource/test.png", "resource/test2.png" };
     j["texIndex"] = 0;
     j["hull"] = { 0, 0, 64, 64 };
@@ -154,8 +154,8 @@ void Asset::CreateDummyAsset()
 void Asset::init()
 {
     // Register asset types
-    registerObjectType("engineObject", nullptr, assetType::EngineObject);
-    registerObjectType("buttonObject", nullptr, assetType::ButtonObject);
+    registerObjectType<Object::defaultObject>("defaultObject", nullptr, assetType::DefaultObject);//change to defaultObject
+    registerObjectType<Object::buttonObject>("buttonObject", nullptr, assetType::ButtonObject);
 
 	// Scan library
     scanAssetDirectory("resource/");

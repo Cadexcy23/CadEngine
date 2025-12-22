@@ -114,6 +114,22 @@ Object::engineObjectBase::~engineObjectBase()
 	Logger::log(Logger::LogCategory::Engine, Logger::LogLevel::Trace, "EngineObject destroyed");
 }
 
+//BaseObject
+Object::defaultObject::defaultObject(
+	const SDL_FRect& hull,
+	std::vector<SDL_Texture*> textures,
+	double rot,
+	bool centered,
+	bool fixed,
+	SDL_FlipMode flip,
+	float scale,
+	int depth)
+	: engineObject(hull, textures, rot,
+		centered, fixed, flip, scale,
+		depth)
+	{
+}
+
 //ButtonObject
 void Object::buttonObject::update()
 {
@@ -152,8 +168,6 @@ Object::buttonObject::buttonObject(
 	bool fixed,
 	SDL_FlipMode flip,
 	float scale,
-	SDL_FPoint vel,
-	double spin,
 	int depth)
 	: engineObject(hull, textures, rot,
 		centered, fixed, flip, scale,

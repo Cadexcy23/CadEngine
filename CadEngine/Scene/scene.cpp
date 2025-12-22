@@ -23,7 +23,7 @@ void Scene::updateObjects() {
     auto it = std::remove_if(activeObjects.begin(), activeObjects.end(),
         [](auto& obj) { 
             return obj->remove; });
-    activeObjects.erase(it, activeObjects.end());
+        activeObjects.erase(it, activeObjects.end());
 
     // Add new objects
     for (auto& obj : addObjects) {

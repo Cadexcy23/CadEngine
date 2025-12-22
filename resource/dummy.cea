@@ -1,6 +1,6 @@
 {
-    "id": "d487dd54518de1ff1fc3fe77d96420e9",
-    "type": "engineObject",
+    "id": "99d13b67fef3b45ff9d893465d54cf79",
+    "type": "defaultObject",
     "textures": [
         "resource/test.png",
         "resource/test2.png"

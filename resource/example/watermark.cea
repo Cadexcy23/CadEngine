@@ -1,9 +1,7 @@
 {
     "id": "cb431606fdc5a2128b23bfcbdc4f042d",
-    "type": "engineObject",
-    "textures": [
-        
-    ],
+    "type": "defaultObject",
+    "textures": [],
     "texIndex": 0,
     "hull": [
         1920,
@@ -20,7 +18,5 @@
     "drawDefault": true,
     "drawFlag": true,
     "updateFlag": true,
-    "scripts": [
-        
-    ]
+    "scripts": []
 }

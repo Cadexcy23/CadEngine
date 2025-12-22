@@ -7,7 +7,10 @@
 #include "../InputOutput/serialization.h"
 #include "../Graphics/texture.h"
 #include "../Scene/scene.h"
+#include "../Scene/asset.h"
 
+//TEMP
+#include "../../example.h"
 
 Network::NetworkServer Network::server;
 Network::NetworkClient Network::client;
@@ -327,7 +330,7 @@ void Network::NetworkServer::broadcast(const void* data, size_t len)
     }
 }
 
-std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetworkObject( std::shared_ptr<Object::engineObjectBase> obj, const std::string& texture_path) {
+std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetworkObject( std::shared_ptr<Object::engineObjectBase> obj, const std::string& assetID) {
     uint32_t ID = nextNetID++;
 
     std::shared_ptr<Network::netObject> netObj;
@@ -338,16 +341,16 @@ std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetw
         // Create and assign
         netObj = std::make_shared<netObject>();
         netObj->netID = ID;
+        netObj->assetID = assetID;
         netObj->obj = obj;
-        netObj->texturePath = texture_path;
 
         // Store it in the map
         netObjects[ID] = netObj;
     }
 
-    if (ID == 0) {
-        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Debug,
-            "[Net][Server] Failed to register network object.");
+    if (ID == 0) {//bad method?
+        Logger::log(Logger::LogCategory::General, Logger::LogLevel::Error,
+            "Server Failed to register network object.");
         return nullptr;
     }
 
@@ -355,7 +358,8 @@ std::shared_ptr<Network::netObject> Network::NetworkServer::registerAndSpawnNetw
     std::vector<uint8_t> buf;
     Serialization::append_uint8(buf, static_cast<uint8_t>(Network::NetMsgType::MSG_SPAWN));
     Serialization::append_u32(buf, ID);
-    Serialization::append_string(buf, texture_path);
+    Serialization::append_string(buf, assetID);
+    //Serialization::append_u32(buf, assetID);
 
     // Initial transform state
     Serialization::append_float(buf, obj->hull.x);
@@ -615,7 +619,7 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
     }
     else if (type == NetMsgType::MSG_SPAWN) {
         uint32_t id = Serialization::read_u32(buf, idx);
-        std::string texPath = Serialization::read_string(buf, idx);
+        std::string assetID = Serialization::read_string(buf, idx);
 
         float x = Serialization::read_float(buf, idx);
         float y = Serialization::read_float(buf, idx);
@@ -628,19 +632,20 @@ void Network::NetworkClient::handleNetworkBuffer(const std::vector<uint8_t>& buf
         int32_t depth = Serialization::read_i32(buf, idx);
 
         // create ghost
-        auto ghost = std::make_shared<Object::engineObjectBase>(SDL_FRect{ x,y,w,h }, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
+        //auto ghost = std::make_shared<Object::defaultObject>(SDL_FRect{x,y,w,h}, std::vector<SDL_Texture*>{}, rot, true, false, static_cast<SDL_FlipMode>(flip), scale, depth);
+        auto ghost = Asset::load<Example::velObject>(assetID);
         ghost->texIndex = texIndex;
         ghost->updateFlag = false;
         // load texture
-        SDL_Texture* loaded = Texture::loadTex(texPath.c_str()); // this should all be replaced with a load asset call
-        if (loaded) ghost->textures.push_back(loaded), ghost->texIndex = 0;
+        //SDL_Texture* loaded = Texture::loadTex(assetID.c_str()); // this should all be replaced with a load asset call
+        //if (loaded) ghost->textures.push_back(loaded), ghost->texIndex = 0;
 
         {
             std::lock_guard<std::mutex> lk(netObjects_mtx);
             netObjects[id] = std::make_unique<Network::netObject>();
 			netObjects[id]->netID = id;
             netObjects[id]->obj = ghost;
-			netObjects[id]->texturePath = texPath;
+			netObjects[id]->assetID = assetID;
         }
         Scene::addObject(ghost);
     }

@@ -25,9 +25,8 @@ public:
 
     struct netObject {
         uint32_t netID;
-        //tick rate?
+        std::string assetID;
         std::shared_ptr<Object::engineObjectBase> obj;
-        std::string texturePath;//get rid of for asset ID
     };
 
     enum class NetworkEventType
@@ -88,7 +87,7 @@ public:
         void broadcast(const void* data, size_t len);
         bool pollEvent(NetworkEvent& out) { return events.poll(out); }
         void broadcastSnapshotToAllClients(uint32_t tick);
-        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObjectBase> obj, const std::string& texture_path);
+        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObjectBase> obj, const std::string& assetID);
         void broadcastDespawn(uint32_t id);
         void auditNetObjects();
 

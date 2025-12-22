@@ -14,24 +14,18 @@ void perpetuate(std::shared_ptr<Example::velObject> obj)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
 	{
-		//get downcast object
-		auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+		obj->hull.x += obj->vel.x * Time::deltaSeconds;
+		obj->hull.y += obj->vel.y * Time::deltaSeconds;
+		obj->vel.x -= (obj->vel.x * Time::deltaSeconds) / 2;
+		obj->vel.y -= (obj->vel.y * Time::deltaSeconds) / 2;
 
-		obj->hull.x += devObj->vel.x * Time::deltaSeconds;
-		obj->hull.y += devObj->vel.y * Time::deltaSeconds;
-		devObj->vel.x -= (devObj->vel.x * Time::deltaSeconds) / 2;
-		devObj->vel.y -= (devObj->vel.y * Time::deltaSeconds) / 2;
-
-		obj->rot += devObj->spin * Time::deltaSeconds;
-		devObj->spin -= (devObj->spin * Time::deltaSeconds) / 2;
+		obj->rot += obj->spin * Time::deltaSeconds;
+		obj->spin -= (obj->spin * Time::deltaSeconds) / 2;
 	}
 }
 
 void keepInScreen(std::shared_ptr<Example::velObject> obj)
 {
-	//get downcast object
-	auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
-
 	int left = 0 + (obj->hull.w / 2) * obj->scale;
 	int right = Renderer::baseRes.x - (obj->hull.w / 2) * obj->scale;
 	int up = 0 + (obj->hull.h / 2) * obj->scale;
@@ -39,26 +33,26 @@ void keepInScreen(std::shared_ptr<Example::velObject> obj)
 	if (obj->hull.x < left)
 	{
 		obj->hull.x = left;
-		if (devObj)
-			devObj->vel.x *= -1;
+		if (obj)
+			obj->vel.x *= -1;
 	}
 	else if (obj->hull.x > right)
 	{
 		obj->hull.x = right;
-		if (devObj)
-			devObj->vel.x *= -1;
+		if (obj)
+			obj->vel.x *= -1;
 	}
 	if (obj->hull.y < up)
 	{
 		obj->hull.y = up;
-		if (devObj)
-			devObj->vel.y *= -1;
+		if (obj)
+			obj->vel.y *= -1;
 	}
 	else if (obj->hull.y > down)
 	{
 		obj->hull.y = down;
-		if (devObj)
-			devObj->vel.y *= -1;
+		if (obj)
+			obj->vel.y *= -1;
 	}
 }
 
@@ -106,41 +100,41 @@ void steer(std::shared_ptr<Object::engineObjectBase> obj)
 	}
 }
 
-void spawnTest(float x, float y, const std::string& texturePath)  {
-	auto obj = Scene::addObject(Asset::load<Example::velObject>("51eef2418bd189a9977230ec58838030"));
+void spawnTest(float x, float y, const std::string& assetID)  {
+	auto obj = Scene::addObject(Asset::load<Example::velObject>(assetID));
 	
-	
+	//netObjs.push_back(Network::server.registerAndSpawnNetworkObject(obj, assetID));
 	 
 	
 	//auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 });
-	//// set server update funcs
-	//p->addUpdateFunc(keepInScreen);
-	///*p->updateFuncs.push_back(keepInScreen);
-	//p->updateFuncs.push_back(tempUpdateFunc);
-	//p->updateFuncs.push_back(keyboardControl);
-	//p->updateFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
-	//	if (clock() >= obj->timeCreated + 1000) {
-	//		obj->remove = true;
-	//	}
-	//	});
+	// set server update funcs
+	/*p->addUpdateFunc(keepInScreen);
+	p->addUpdateFunc(steer);
+	p->addUpdateFunc(perpetuate);*/
+	obj->addUpdateFunc([](std::shared_ptr<Object::engineObjectBase> obj) {
+		if (clock() >= obj->timeCreated + 1000) {
+			obj->remove = true;
+		}
+		});
 
-	//p->despawnFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
-	//	int randomChance = rand() % 2;
-	//	if (randomChance == 1)
-	//		spawnTest(obj->hull.x, obj->hull.y, "resource/test.png");
-	//});*/
-	//	
+	obj->addDespawnFunc([assetID](std::shared_ptr<Object::engineObjectBase> obj) {
+		int randomChance = rand() % 2;
+		if (randomChance == 1)
+			spawnTest(obj->hull.x, obj->hull.y, assetID);
+	});
+		
+	obj->hull.x = x;
+	obj->hull.y = y;
+	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
+	obj->vel = vel;
+	obj->rot = rand() % 360;
+	obj->scale = float(rand() % 1000) / 1000.0 + 0.5;
+	obj->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
 
-	//SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
-	//p->vel = vel;
-	//p->rot = rand() % 360;
-	//p->scale = float(rand() % 1000) / 1000.0 + 0.5;
-	//p->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
-
-	////only run here when running a server with rendering active
-	//p->textures.push_back(Texture::loadTex(texturePath.c_str()));
+	//only run here when running a server with rendering active
+	//p->textures.push_back(Texture::loadTex(assetID.c_str()));
 	
-	//netObjs.push_back(Network::server.registerAndSpawnNetworkObject(Scene::addObject(p), texturePath));
+	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(obj, assetID));
 }
 
 void despawnTest() {
@@ -220,7 +214,7 @@ void engineControls()
 	
 	if (Input::mouseStates[0])
 	{
-		spawnTest(Input::mousePos.x, Input::mousePos.y, "resource/test.png");
+		spawnTest(Input::mousePos.x, Input::mousePos.y, "51eef2418bd189a9977230ec58838030");
 	}
 	if (Input::mouseStates[2])
 	{
@@ -234,6 +228,7 @@ void engineControls()
 		if(!Network::server.isRunning())
 		{
 			Network::server.start(27015);
+			//create a timer to broadcast snapshots at 60 ticks a second (16.67 ms per tick)
 			Time::timer* t = Time::createTimer(16.67, -1, nullptr);
 			t->setCallback([t]() {
 				
@@ -320,7 +315,7 @@ void velLoad(const json j, std::shared_ptr<Object::engineObjectBase> obj)
 void exampleInit()
 {
 	// Load custom object types
-	Asset::registerObjectType("velObject", velLoad);
+	Asset::registerObjectType<Example::velObject>("velObject", velLoad);
 
 	// register velObject as a lua type
 	Lua::registerType<Example::velObject>("velObject",
@@ -331,10 +326,10 @@ void exampleInit()
 		"flipVelY", [](Example::velObject& obj) { obj.vel.y *= -1; }
 	);
 	// register custom engine functions
-	/*Lua::registerEngineFunction("isKeyPressed",
-		[](const char* key) -> bool {
-			return Input::keyStates[SDL_GetScancodeFromName(key)];
-		});*/
+	Lua::registerEngineFunction("printObjectCount",
+		[]() {
+			Logger::log(Logger::LogCategory::General, Logger::LogLevel::Info, "Object count: %i", Scene::activeObjects.size());
+		});
 
 	//load font
 	Text::loadFont("resource/font/segoeuithibd.ttf", 32);
@@ -343,13 +338,11 @@ void exampleInit()
 	//register engine object functions
 	Asset::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
 	Asset::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
-	Asset::registerObjectFunc<Example::velObject>("steer", steer);
+	Asset::registerObjectFunc<Object::engineObjectBase>("steer", steer);
 }
 
 void exampleLoad()
 {
-	
-
 	//set cam pos
 	Renderer::camPos = { float(Renderer::baseRes.x / 2), float(Renderer::baseRes.y / 2) };
 

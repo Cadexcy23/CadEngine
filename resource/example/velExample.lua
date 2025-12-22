@@ -1,34 +1,10 @@
--- Lua script example
-
--- obj is automatically of its derived type
-    -- Access properties directly
-    --engine.log("Initial velocity: " .. tostring(obj.velocity))
-    --engine.log("Initial spin: " .. obj.spin)
-    
-    -- Call methods
-    --obj:flipVel()  -- Note the colon (:) for methods!
-    
-    -- You can also modify properties directly
-    --obj.velocity = {x = 100, y = 50}
-    --obj.spin = 180
-
--- Access properties
-    --local vel = obj.velocity
-    --local spin = obj.spin
-    
-    -- Call methods with colon syntax
-    --obj:flipVelX()
-    --obj:flipVelY()
-    
-    -- Or modify properties
-    --obj.vel.x = 0.99 * obj.vel.x -- Apply friction
-	--obj.vel.y = 0.99 * obj.vel.y
-    --obj.spin = spin * 0.95  -- Slow down spin
-
+-- onCreate runs once on creation and deletes itself so there is minimal performance hit by doing so with a Lua func
+-- BUG: runs during object creation so dta is not fully initialized meaning read data may be initialized and writing data may be overwritten
 function onCreate(obj)
     --set to mouse pos
 	
 	--randomize velocity
+	engine.printObjectCount()
 end
 
 local deltaSeconds, x, y, xVel, yVel, rot, spin, SB
@@ -69,7 +45,7 @@ end
 
 function keepIn(obj)
 	--keep object in the screen
-	if x > SB.w then -- try this next for optimization
+	if x > SB.w then
 		x = SB.w
 		obj:flipVelX()
 	elseif x < SB.x then
@@ -84,26 +60,27 @@ function keepIn(obj)
 	end
 end
 
-function update(obj)
-	deltaSeconds = engine:getDeltaSeconds()
-	x = obj.hull.x
-	y = obj.hull.y
-	xVel = obj.vel.x
-	yVel = obj.vel.y
-	rot = obj.rotation
-	spin = obj.spin
-	SB = engine.screenBounds
+--this CAN be enabled but it is ill advised as even just having an empty update function DRASTICALLY increases memory usage an lowers performance
+--function update(obj)
+	--deltaSeconds = engine:getDeltaSeconds()
+	--x = obj.hull.x
+	--y = obj.hull.y
+	--xVel = obj.vel.x
+	--yVel = obj.vel.y
+	--rot = obj.rotation
+	--spin = obj.spin
+	--SB = engine.screenBounds
 
-	steer(obj)
-	perpetuate(obj)
-	keepIn(obj)
+	--steer(obj)
+	--perpetuate(obj)
+	--keepIn(obj)
 
-	obj.hull.x = x
-	obj.hull.y = y
-	obj.vel.x = xVel
-	obj.vel.y = yVel
-	obj.rotation = rot
-	obj.spin = spin
+	--obj.hull.x = x
+	--obj.hull.y = y
+	--obj.vel.x = xVel
+	--obj.vel.y = yVel
+	--obj.rotation = rot
+	--obj.spin = spin
 
-end
+--end
 

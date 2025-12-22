@@ -1,6 +1,6 @@
 {
     "id": "8bdf7db499ca7d7e0e8b83cb5c8ee486",
-    "type": "engineObject",
+    "type": "defaultObject",
     "textures": [
         "resource/bg.png"
     ],
