@@ -239,7 +239,7 @@ void engineControls()
 		//Start client
 		if (!Network::client.isConnected())
 		{
-			Network::client.connectTo("10.0.0.139", 27015);
+			Network::client.connectTo(Serialization::getSetting("ServerIP"), 27015);
 		}
 		else
 		{
@@ -333,6 +333,19 @@ void exampleInit()
 	Object::registerObjectFunc<Object::engineObjectBase>("steer", steer); 
 	Object::registerObjectFunc<Object::engineObjectBase>("timedDespawn", timedDespawn);
 	Object::registerObjectFunc<Object::engineObjectBase>("duplicate", duplicate);
+
+	//check for IP address setting
+	if (!Serialization::getSetting("ServerIP").length())
+	{
+		Serialization::setSetting("ServerIP", "10.0.0.1");
+		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Warn, 
+			"Server IP address not found, loading default.");
+	}
+	else
+	{
+		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Warn,
+			"Server IP address found: %s.", Serialization::getSetting("ServerIP").c_str());
+	}
 }
 
 void exampleLoad()
@@ -347,8 +360,8 @@ void exampleLoad()
 	auto watermark = Scene::addObject(Asset::load<Object::defaultObject>("cb431606fdc5a2128b23bfcbdc4f042d"));
 	watermark->textures[0] = Text::loadText("CadEngine", Text::loadFont("resource/font/segoeuithibd.ttf", 32));
 	watermark->resetSize();
-	watermark->hull.x -= watermark->hull.w;
-	watermark->hull.y -= watermark->hull.h;
+	//watermark->hull.x -= watermark->hull.w;
+	//watermark->hull.y -= watermark->hull.h;
 
 	// Quit button
 	auto quitButton = Scene::addObject(Asset::load<Object::buttonObject>("e51d80cd2e5dab0bf9b41e7b7fc2afde"));
@@ -357,38 +370,28 @@ void exampleLoad()
 	quitButton->hull.x -= quitButton->hull.w;
 	quitButton->onClick = []() { Engine::quit = true; };
 
-	////controls
-	//SDL_Texture* conTex = Text::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", bold, { 255, 255, 255, 255 });
-	//SDL_GetTextureSize(conTex, &w, &h);
-	//SDL_FRect conHull = { 0, Renderer::baseRes.y - h, w, h };
-	//std::shared_ptr<Object::engineObject> conObj = std::make_shared<Object::engineObject>(Object::engineObject(conHull, { conTex }, 0, false, true));
-	//conObj->depth = -1;
-	//Scene::addObject(conObj);
+	//controls
+	auto controls1 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls1->textures[0] = Text::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", Text::loadFont("resource/font/segoeuithibd.ttf", 32), {255, 255, 255, 255});
+	controls1->resetSize();
 
-	////controls 2
-	//SDL_Texture* conBTex = Text::loadText("WASD - Steer Objects   -/+ - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count   F - Toggle Follow", bold, { 255, 255, 255, 255 });
-	//SDL_GetTextureSize(conBTex, &w, &h);
-	//SDL_FRect conBHull = { 0, Renderer::baseRes.y - h - 40, w, h };
-	//std::shared_ptr<Object::engineObject> conBObj = std::make_shared<Object::engineObject>(Object::engineObject(conBHull, { conBTex }, 0, false, true));
-	//conBObj->depth = -1;
-	//Scene::addObject(conBObj);
+	//controls 2
+	auto controls2 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls2->textures[0] = Text::loadText("WASD - Steer Objects   -/+ - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count   F - Toggle Follow", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls2->resetSize();
+	controls2->hull.y -= 40;
 
-	////controls 3
-	//SDL_Texture* conCTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", bold, { 255, 255, 255, 255 });
-	//SDL_GetTextureSize(conCTex, &w, &h);
-	//SDL_FRect conCHull = { 0, Renderer::baseRes.y - h - 80, w, h };
-	//std::shared_ptr<Object::engineObject> conCObj = std::make_shared<Object::engineObject>(Object::engineObject(conCHull, { conCTex }, 0, false, true));
-	//conCObj->depth = -1;
-	//Scene::addObject(conCObj);
-
-	////controls 4
-	///*SDL_Texture* conDTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture", bold, { 255, 255, 255, 255 });
-	//SDL_GetTextureSize(conDTex, &w, &h);
-	//SDL_FRect conDHull = { 0, Renderer::baseRes.y - h - 120, w, h };
-	//std::shared_ptr<Object::engineObject> conDObj = std::make_shared<Object::engineObject>(Object::engineObject(conDHull, conDTex, 0, false, true));
-	//conDObj->depth = -1;
-	//Scene::addObject(conDObj);*/
-
+	//controls 3
+	auto controls3 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls3->textures[0] = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls3->resetSize();
+	controls3->hull.y -= 40 * 2;
+	
+	//controls 4
+	/*auto controls4 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls4->textures[0] = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls4->resetSize();
+	controls4->hull.y -= 40 * 3;*/
 }
 //EXAMPLE CODE END
 

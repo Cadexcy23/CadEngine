@@ -27,7 +27,7 @@ void generateDefaultSettingsFile()
 	}
 
 	std::ofstream file("resource/settings.cfg");
-	file << "[Resolution] 480 270\n";
+	file << "[Resolution] 960 540\n";
 	file << "[Vsync] 1\n";
 	file.close();
 }

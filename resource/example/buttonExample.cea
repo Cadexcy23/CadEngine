@@ -19,8 +19,5 @@
     "depth": -1,
     "drawDefault": true,
     "drawFlag": true,
-    "updateFlag": true,
-    "scripts": [
-        
-    ]
+    "updateFlag": true
 }
