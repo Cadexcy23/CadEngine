@@ -1,23 +1,22 @@
 {
-    "id": "e895a2662eaa6cb7cfa1236bca0b40b9",
-    "type": "EngineObject",
+    "id": "8bdf7db499ca7d7e0e8b83cb5c8ee486",
+    "type": "defaultObject",
     "textures": [
-        "resource/test.png",
-        "resource/test2.png"
+        "resource/bg.png"
     ],
     "texIndex": 0,
     "hull": [
         0,
         0,
-        64,
-        64
+        1920,
+        1080
     ],
-    "centered": true,
+    "centered": false,
     "fixed": false,
     "flip": 0,
     "scale": 1.0,
     "rot": 0.0,
-    "depth": 0,
+    "depth": 100,
     "drawDefault": true,
     "drawFlag": true,
     "updateFlag": true

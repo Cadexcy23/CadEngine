@@ -1,0 +1,21 @@
+{
+    "id": "cb431606fdc5a2128b23bfcbdc4f042d",
+    "type": "defaultObject",
+    "textures": [],
+    "texIndex": 0,
+    "hull": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "centered": false,
+    "fixed": false,
+    "flip": 0,
+    "scale": 1.0,
+    "rot": 0.0,
+    "depth": -1,
+    "drawDefault": true,
+    "drawFlag": true,
+    "updateFlag": true
+}

@@ -4,16 +4,10 @@
 static class Example {
 public:
 
-	struct velObject : public Object::engineObject
+	struct velObject : public Object::engineObject<velObject>
 	{
 		SDL_FPoint vel;
 		double spin;
-
-		void flipVel()
-		{
-			vel.x *= -1;
-			vel.y *= -1;
-		}
 
 		velObject(const SDL_FRect hull = {0, 0, 10, 10}, std::vector<SDL_Texture*> textures = {}, double rot = 0,
 			bool centered = true, bool fixed = false, SDL_FlipMode flip = SDL_FLIP_NONE, float scale = 1.0,

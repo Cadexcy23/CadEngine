@@ -10,33 +10,24 @@ bool follow = false;
 
 
 //ENGINE OBJECTS FUNCS
-void quitProgram()
-{
-	Engine::quit = true;
-}
+void spawnTest(float x, float y, const std::string& assetID);
 
-void tempUpdateFunc(std::shared_ptr<Object::engineObject> obj)
+void perpetuate(std::shared_ptr<Example::velObject> obj)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
 	{
-		//get downcast object
-		auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+		obj->hull.x += obj->vel.x * Time::deltaSeconds;
+		obj->hull.y += obj->vel.y * Time::deltaSeconds;
+		obj->vel.x -= (obj->vel.x * Time::deltaSeconds) / 2;
+		obj->vel.y -= (obj->vel.y * Time::deltaSeconds) / 2;
 
-		obj->hull.x += devObj->vel.x * Time::deltaSeconds;
-		obj->hull.y += devObj->vel.y * Time::deltaSeconds;
-		devObj->vel.x -= (devObj->vel.x * Time::deltaSeconds) / 2;
-		devObj->vel.y -= (devObj->vel.y * Time::deltaSeconds) / 2;
-
-		obj->rot += devObj->spin * Time::deltaSeconds;
-		devObj->spin -= (devObj->spin * Time::deltaSeconds) / 2;
+		obj->rot += obj->spin * Time::deltaSeconds;
+		obj->spin -= (obj->spin * Time::deltaSeconds) / 2;
 	}
 }
 
-void keepInScreen(std::shared_ptr<Object::engineObject> obj)
+void keepInScreen(std::shared_ptr<Example::velObject> obj)
 {
-	//get downcast object
-	auto devObj = std::dynamic_pointer_cast<Example::velObject>(obj);
-
 	int left = 0 + (obj->hull.w / 2) * obj->scale;
 	int right = Renderer::baseRes.x - (obj->hull.w / 2) * obj->scale;
 	int up = 0 + (obj->hull.h / 2) * obj->scale;
@@ -44,30 +35,30 @@ void keepInScreen(std::shared_ptr<Object::engineObject> obj)
 	if (obj->hull.x < left)
 	{
 		obj->hull.x = left;
-		if (devObj)
-			devObj->vel.x *= -1;
+		if (obj)
+			obj->vel.x *= -1;
 	}
 	else if (obj->hull.x > right)
 	{
 		obj->hull.x = right;
-		if (devObj)
-			devObj->vel.x *= -1;
+		if (obj)
+			obj->vel.x *= -1;
 	}
 	if (obj->hull.y < up)
 	{
 		obj->hull.y = up;
-		if (devObj)
-			devObj->vel.y *= -1;
+		if (obj)
+			obj->vel.y *= -1;
 	}
 	else if (obj->hull.y > down)
 	{
 		obj->hull.y = down;
-		if (devObj)
-			devObj->vel.y *= -1;
+		if (obj)
+			obj->vel.y *= -1;
 	}
 }
 
-void keyboardControl(std::shared_ptr<Object::engineObject> obj)
+void steer(std::shared_ptr<Object::engineObjectBase> obj)
 {
 	if (Engine::engineState != Engine::STATE_PAUSE)
 	{
@@ -111,35 +102,33 @@ void keyboardControl(std::shared_ptr<Object::engineObject> obj)
 	}
 }
 
-void spawnTest(float x, float y, const std::string& texturePath)  {
-	auto p = std::make_shared<Example::velObject>(SDL_FRect{ x,y,32,32 });
-	// set server update funcs
-	p->updateFuncs.push_back(keepInScreen);
-	p->updateFuncs.push_back(tempUpdateFunc);
-	p->updateFuncs.push_back(keyboardControl);
-	p->updateFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
-		if (clock() >= obj->timeCreated + 1000) {
-			obj->remove = true;
-		}
-		});
+void timedDespawn(std::shared_ptr<Object::engineObjectBase> obj)
+{
+	if (clock() >= obj->timeCreated + 1000) {
+		obj->remove = true;
+	}
+}
 
-	p->despawnFuncs.push_back([](std::shared_ptr<Object::engineObject> obj) {
-		int randomChance = rand() % 2;
-		if (randomChance == 1)
-			spawnTest(obj->hull.x, obj->hull.y, "resource/test.png");
-	});
-		
+void duplicate(std::shared_ptr<Object::engineObjectBase> obj) {
+	int randomChance = rand() % 2;
+	if (randomChance == 1)
+		spawnTest(obj->hull.x, obj->hull.y, "51eef2418bd189a9977230ec58838030");
+}
 
+
+void spawnTest(float x, float y, const std::string& assetID)  {
+	auto obj = Scene::addObject(Asset::load<Example::velObject>(assetID));
+
+	//move to lua start up script?
+	obj->hull.x = x;
+	obj->hull.y = y;
 	SDL_FPoint vel = { rand() % 1000 - 500, rand() % 1000 - 500 };
-	p->vel = vel;
-	p->rot = rand() % 360;
-	p->scale = float(rand() % 1000) / 1000.0 + 0.5;
-	p->spin = (double(rand() % 20000) / 1000.0 - 10.0) *100;
-
-	//only run here when running a server with rendering active
-	p->textures.push_back(Texture::loadTex(texturePath.c_str()));
+	obj->vel = vel;
+	obj->rot = rand() % 360;
+	obj->scale = float(rand() % 1000) / 1000.0 + 0.5;
+	obj->spin = (double(rand() % 20000) / 1000.0 - 10.0) * 100;
 	
-	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(Scene::addObject(p), texturePath));
+	netObjs.push_back(Network::server.registerAndSpawnNetworkObject(obj, assetID));
 }
 
 void despawnTest() {
@@ -153,7 +142,6 @@ void despawnTest() {
 
 void engineControls()
 {
-
 	/*if (follow && objs.size())
 	{
 		Renderer::camPos.x = objs.front()->hull.x;
@@ -199,10 +187,7 @@ void engineControls()
 	}
 	if (Input::keyStates[SDL_SCANCODE_3] == 1)
 	{
-		if (Engine::debugLevel > 1)
-			Engine::debugLevel = 0;
-		else
-			Engine::debugLevel++;
+		Renderer::hullDebugDraw = !Renderer::hullDebugDraw;
 	}
 	if (Input::keyStates[SDL_SCANCODE_4] == 1)
 	{
@@ -220,25 +205,24 @@ void engineControls()
 		follow = !follow;
 	}
 	
+	// Spawn/despawn test object
 	if (Input::mouseStates[0])
 	{
-		spawnTest(Input::mousePos.x, Input::mousePos.y, "resource/test.png");
-		/*SDL_Texture* tex = Texture::loadTex("resource/test2.png");
-		SDL_Texture* tex2 = Texture::loadTex("resource/test.png");
-		SDL_Texture* tex3 = Texture::loadTex("resource/icon.png");*/
+		spawnTest(Input::mousePos.x, Input::mousePos.y, "51eef2418bd189a9977230ec58838030");
 	}
 	if (Input::mouseStates[2])
 	{
 		despawnTest();
 	}
 
-	//Networking
+	// Networking
 	if (Input::keyStates[SDL_SCANCODE_Z] == 1)
 	{
 		//Start server
 		if(!Network::server.isRunning())
 		{
 			Network::server.start(27015);
+			//create a timer to broadcast snapshots at 60 ticks a second (16.67 ms per tick)
 			Time::timer* t = Time::createTimer(16.67, -1, nullptr);
 			t->setCallback([t]() {
 				
@@ -255,27 +239,21 @@ void engineControls()
 		//Start client
 		if (!Network::client.isConnected())
 		{
-			Network::client.connectTo("10.0.0.139", 27015);
+			Network::client.connectTo(Serialization::getSetting("ServerIP"), 27015);
 		}
 		else
 		{
 			Network::client.disconnect();
 		}
 	}
+
+	// Create dummy asset
 	if (Input::keyStates[SDL_SCANCODE_C] == 1)
 	{
 		Asset::CreateDummyAsset();
 	}
-	if (Input::keyStates[SDL_SCANCODE_V] == 1)
-	{
-		auto obj = Scene::addObject(Asset::load<Example::velObject>("51eef2418bd189a9977230ec58838030"));
-		/*obj->updateFuncs.push_back(keepInScreen);
-		obj->updateFuncs.push_back(tempUpdateFunc);
-		obj->updateFuncs.push_back(keyboardControl);*/
-	}
-	
 
-	// custom process network messages
+	// Custom process network messages
 	Network::NetworkEvent e;
 	while (Network::server.pollEvent(e)) {
 		switch (e.type) {
@@ -307,10 +285,15 @@ void engineControls()
 	}
 }
 
-void velLoad(const json j, std::shared_ptr<Object::engineObject> obj)
+void velLoad(const json j, std::shared_ptr<Object::engineObjectBase> obj)
 {
 	//downcast object
 	auto dObj = std::dynamic_pointer_cast<Example::velObject>(obj);
+	if (!dObj) {
+		Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
+			"velLoad: Object is not of type velObject");
+		return;
+	}
 
 	//load custom properties
 	dObj->vel = { 0,0 };
@@ -324,120 +307,114 @@ void velLoad(const json j, std::shared_ptr<Object::engineObject> obj)
 void exampleInit()
 {
 	// Load custom object types
-	Asset::registerObjectType("VelObject", velLoad);
-	// register SDL_FPoint as a lua type
-	Lua::registerTypeSimple<SDL_FPoint>("SDL_FPoint",
-		"x", &SDL_FPoint::x,
-		"y", &SDL_FPoint::y,
-		"__tostring", [](const SDL_FPoint& v) {
-			return "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ")";
-		}
-	);
+	Asset::registerObjectType<Example::velObject>("velObject", velLoad);
+
 	// register velObject as a lua type
-	Lua::registerType<Example::velObject>("VelObject",
+	Lua::registerType<Example::velObject>("velObject",
 		"vel", &Example::velObject::vel,
 		"spin", &Example::velObject::spin,
-		"flipVel", &Example::velObject::flipVel,
 		"flipVelX", [](Example::velObject& obj) { obj.vel.x *= -1; },
 		"flipVelY", [](Example::velObject& obj) { obj.vel.y *= -1; }
 	);
-	//// register custom engine functions
-	Lua::registerEngineFunction("isKeyPressed",
-		[](const char* key) -> bool {
-			return Input::keyStates[SDL_GetScancodeFromName(key)];
+
+	// register custom engine functions
+	Lua::registerEngineFunction("printObjectCount",
+		[]() {
+			Logger::log(Logger::LogCategory::General, Logger::LogLevel::Info, "Object count: %i", Scene::activeObjects.size());
 		});
-	
+
+	//load font
+	Text::loadFont("resource/font/segoeuithibd.ttf", 32);
+	Text::loadFont("resource/font/segoeuithisi.ttf", 32);
+
+	//register engine object functions
+	Object::registerObjectFunc<Example::velObject>("perpetuate", perpetuate);
+	Object::registerObjectFunc<Example::velObject>("keepInScreen", keepInScreen);
+	Object::registerObjectFunc<Object::engineObjectBase>("steer", steer); 
+	Object::registerObjectFunc<Object::engineObjectBase>("timedDespawn", timedDespawn);
+	Object::registerObjectFunc<Object::engineObjectBase>("duplicate", duplicate);
+
+	//check for IP address setting
+	if (!Serialization::getSetting("ServerIP").length())
 	{
-		//set cam pos
-		Renderer::camPos = { float(Renderer::baseRes.x / 2), float(Renderer::baseRes.y / 2) };
-
-		std::shared_ptr<Object::engineObject> bg = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject({ 0, 0, float(Renderer::baseRes.x), float(Renderer::baseRes.y) }, { Texture::loadTex("resource/bg.png") }, 0, false)));
-		bg->depth = 1;
-
-		TTF_Font* bold = Text::loadFont("resource/font/segoeuithibd.ttf", 32);
-		Text::loadFont("resource/font/segoeuithisi.ttf", 32);
-
-		SDL_Texture* textures = Text::loadText("CadEngine", bold, { 255, 255, 255, 255 });
-		float w, h = 0;
-		SDL_GetTextureSize(textures, &w, &h);
-		SDL_FRect hull = { 0, 0, w, h };
-		std::shared_ptr<Object::engineObject> watermark = Scene::addObject(std::make_shared<Object::engineObject>(Object::engineObject(hull, { textures }, 0, false, true)));
-		watermark->depth = -1;
-
-		//quit button
-		SDL_Texture* quitTex = Text::loadText("Quit", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(quitTex, &w, &h);
-		SDL_FRect quitHull = { Renderer::baseRes.x - w, 0, w, h };
-		std::shared_ptr<Object::buttonObject> quitButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitHull, { quitTex }, 0, false, true));
-		quitButton->onClick = quitProgram;
-		std::shared_ptr<Object::engineObject> quitObject = Scene::addObject(quitButton);
-		quitObject->depth = -1;
-
-		//controls
-		SDL_Texture* conTex = Text::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(conTex, &w, &h);
-		SDL_FRect conHull = { 0, Renderer::baseRes.y - h, w, h };
-		std::shared_ptr<Object::engineObject> conObj = std::make_shared<Object::engineObject>(Object::engineObject(conHull, { conTex }, 0, false, true));
-		conObj->depth = -1;
-		Scene::addObject(conObj);
-
-		//controls 2
-		SDL_Texture* conBTex = Text::loadText("WASD - Steer Objects   -/+ - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count   F - Toggle Follow", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(conBTex, &w, &h);
-		SDL_FRect conBHull = { 0, Renderer::baseRes.y - h - 40, w, h };
-		std::shared_ptr<Object::engineObject> conBObj = std::make_shared<Object::engineObject>(Object::engineObject(conBHull, { conBTex }, 0, false, true));
-		conBObj->depth = -1;
-		Scene::addObject(conBObj);
-
-		//controls 3
-		SDL_Texture* conCTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(conCTex, &w, &h);
-		SDL_FRect conCHull = { 0, Renderer::baseRes.y - h - 80, w, h };
-		std::shared_ptr<Object::engineObject> conCObj = std::make_shared<Object::engineObject>(Object::engineObject(conCHull, { conCTex }, 0, false, true));
-		conCObj->depth = -1;
-		Scene::addObject(conCObj);
-
-		//controls 4
-		/*SDL_Texture* conDTex = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(conDTex, &w, &h);
-		SDL_FRect conDHull = { 0, Renderer::baseRes.y - h - 120, w, h };
-		std::shared_ptr<Object::engineObject> conDObj = std::make_shared<Object::engineObject>(Object::engineObject(conDHull, conDTex, 0, false, true));
-		conDObj->depth = -1;
-		Scene::addObject(conDObj);*/
-
-		//TEMP
-		//quit button
-		SDL_Texture* quitTestTex = Text::loadText("Quit", bold, { 255, 255, 255, 255 });
-		SDL_GetTextureSize(quitTestTex, &w, &h);
-		SDL_FRect quitTestHull = { Renderer::baseRes.x - w, 0, w, h };
-		std::shared_ptr<Object::buttonObject> quitTestButton = std::make_shared<Object::buttonObject>(Object::buttonObject(quitTestHull, { quitTestTex }, 0, false, false));
-		quitTestButton->onClick = quitProgram;
-		std::shared_ptr<Object::engineObject> quitTestObject = Scene::addObject(quitTestButton);
-		quitTestObject->depth = -10;
+		Serialization::setSetting("ServerIP", "10.0.0.1");
+		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Warn, 
+			"Server IP address not found, loading default.");
 	}
+	else
+	{
+		Logger::log(Logger::LogCategory::General, Logger::LogLevel::Warn,
+			"Server IP address found: %s.", Serialization::getSetting("ServerIP").c_str());
+	}
+}
+
+void exampleLoad()
+{
+	//set cam pos
+	Renderer::camPos = { float(Renderer::baseRes.x / 2), float(Renderer::baseRes.y / 2) };
+
+	//BG
+	Scene::addObject(Asset::load<Object::defaultObject>("8bdf7db499ca7d7e0e8b83cb5c8ee486"));
+	
+	//Watermark
+	auto watermark = Scene::addObject(Asset::load<Object::defaultObject>("cb431606fdc5a2128b23bfcbdc4f042d"));
+	watermark->textures[0] = Text::loadText("CadEngine", Text::loadFont("resource/font/segoeuithibd.ttf", 32));
+	watermark->resetSize();
+	//watermark->hull.x -= watermark->hull.w;
+	//watermark->hull.y -= watermark->hull.h;
+
+	// Quit button
+	auto quitButton = Scene::addObject(Asset::load<Object::buttonObject>("e51d80cd2e5dab0bf9b41e7b7fc2afde"));
+	quitButton->textures[0] = Text::loadText("Quit", Text::loadFont("resource/font/segoeuithibd.ttf", 32));
+	quitButton->resetSize();
+	quitButton->hull.x -= quitButton->hull.w;
+	quitButton->onClick = []() { Engine::quit = true; };
+
+	//controls
+	auto controls1 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls1->textures[0] = Text::loadText("Left Click - Spawn Object   Right Click - Delete Object   1 - Vsync Toggle   2 - FPS Toggle   3 - Debug Level   4 - Pause Updates", Text::loadFont("resource/font/segoeuithibd.ttf", 32), {255, 255, 255, 255});
+	controls1->resetSize();
+
+	//controls 2
+	auto controls2 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls2->textures[0] = Text::loadText("WASD - Steer Objects   -/+ - Adjust Object Size   Q/E - Spin   Space - Speed Boost   P - Print Object Count   F - Toggle Follow", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls2->resetSize();
+	controls2->hull.y -= 40;
+
+	//controls 3
+	auto controls3 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls3->textures[0] = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls3->resetSize();
+	controls3->hull.y -= 40 * 2;
+	
+	//controls 4
+	/*auto controls4 = Scene::addObject(Asset::load<Object::defaultObject>("3069663f902a32ec037e3c8c5d28dbb8"));
+	controls4->textures[0] = Text::loadText("Arrow Keys - Move Camera   Mouse Wheel - Zoom Camera   ,/. - Cycle Texture   Z - Start Server   X - Connect to Server", Text::loadFont("resource/font/segoeuithibd.ttf", 32), { 255, 255, 255, 255 });
+	controls4->resetSize();
+	controls4->hull.y -= 40 * 3;*/
 }
 //EXAMPLE CODE END
 
 
 int main(int argc, char* argv[])
 {
-	//Initialize Engine 
+	//Initialize Engine (subsystems, window, renderer, etc)
 	Engine::initEngine();
 
-	//TEMP INIT
-	Lua::init();
-
-	//Initialize modules
+	//Initialize example (load custom objects, lua bindings, etc)
 	exampleInit();
 
-	//TEMP INIT
+	//Initialize asset system (after engine init and example init)
 	Asset::init();
+
+	//Load example scene (after everything is registered)
+	exampleLoad();
 
 	while (!Engine::quit) {
 		//Process input
 		Engine::update();
 
-		//Update modules here
+		//Update custom project specific functionality
 		engineControls();
 
 		//Render scene

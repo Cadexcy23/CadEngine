@@ -5,19 +5,67 @@
 #include "../sol.hpp"
 #include "../Scene/object.h"
 #include "../Core/logger.h"
+#include "../Core/time.h"
 
 class Lua {
 public:
     static void init();
-    static void cleanup();
 
     static bool loadScript(const std::string& scriptPath);
-    static void attachScript(const std::string& scriptPath,
-        std::shared_ptr<Object::engineObject> obj);
+    template<typename T>
+    static void attachScript(const std::string& scriptPath, std::shared_ptr<T> obj) {
+        if (!initialized) return;
+
+        // Load or get cached environment
+        sol::environment& env = getScriptEnvironment(scriptPath);
+
+        // Handle update function
+        sol::optional<sol::protected_function> updateFunc = env["update"];
+        if (updateFunc) {
+            // Store as protected_function
+            sol::protected_function func = *updateFunc;
+
+            obj->addUpdateFunc([func](std::shared_ptr<T> derivedObj) {
+                try {
+                    sol::protected_function_result result = func(derivedObj);
+                    if (!result.valid()) {
+                        sol::error err = result;
+                        Logger::log(Logger::LogCategory::InputOutput,
+                            Logger::LogLevel::Error,
+                            "Update function error: %s", err.what());
+                    }
+                }
+                catch (const sol::error& e) {
+                    Logger::log(Logger::LogCategory::InputOutput,
+                        Logger::LogLevel::Error,
+                        "Update function exception: %s", e.what());
+                }
+                });
+        }
+
+        // Handle onCreate with protected_function
+        sol::optional<sol::protected_function> onCreateFunc = env["onCreate"];
+        if (onCreateFunc) {
+            try {
+                sol::protected_function_result result = (*onCreateFunc)(obj);
+                if (!result.valid()) {
+                    sol::error err = result;
+                    Logger::log(Logger::LogCategory::InputOutput,
+                        Logger::LogLevel::Error,
+                        "onCreate function error: %s", err.what());
+                }
+            }
+            catch (const sol::error& e) {
+                Logger::log(Logger::LogCategory::InputOutput,
+                    Logger::LogLevel::Error,
+                    "onCreate function exception: %s", e.what());
+            }
+        }
+    }
     template<typename Func>
     static bool registerEngineFunction(const std::string& name, Func&& func) {
         try {
-            EngineFunctionRegistration reg = [name, func = std::forward<Func>(func)]
+            std::function<void(sol::state&)> reg = [name, func = std::forward<Func>(func)]
             (sol::state& lua) mutable {
                 lua["engine"][name] = func;
                 };
@@ -42,8 +90,8 @@ public:
     }
     template<typename T, typename... Args>
     static bool registerType(const std::string& typeName, Args&&... args) {
-        static_assert(std::is_base_of_v<Object::engineObject, T>,
-            "Lua-registered types must inherit from engineObject");
+        static_assert(std::is_base_of_v<Object::engineObjectBase, T>,
+            "Lua-registered types must inherit from engineObjectBase");
         try {
             // Store arguments by value
             auto reg = [typeName, args...](sol::state& lua) mutable {
@@ -51,7 +99,7 @@ public:
                 auto tuple = std::make_tuple(args...);
                 std::apply([&](auto&... tupleArgs) {
                     lua.new_usertype<T>(typeName,
-                        sol::base_classes, sol::bases<Object::engineObject>(),
+                        sol::base_classes, sol::bases<Object::engineObjectBase>(),
                         tupleArgs...
                         );
                     }, tuple);
@@ -107,13 +155,13 @@ public:
         }
     }
 
-    using TypeRegistration = std::function<void(sol::state&)>;
-    using EngineFunctionRegistration = std::function<void(sol::state&)>;
 private:
 
     static sol::state lua;
-    static std::unordered_map<std::string, TypeRegistration> typeRegistrations;
-    static std::unordered_map<std::string, EngineFunctionRegistration> engineFunctionRegistrations;
+    static std::unordered_map<std::string, std::function<void(sol::state&)>> typeRegistrations;
+    static std::unordered_map<std::string, std::function<void(sol::state&)>> engineFunctionRegistrations;
     static std::unordered_map<std::string, sol::environment> scriptEnvironments;
     static bool initialized;
+
+    static sol::environment& getScriptEnvironment(const std::string& scriptPath);
 };

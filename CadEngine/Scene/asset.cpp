@@ -8,10 +8,7 @@
 
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;
 std::unordered_map<std::string, Asset::assetInfo> Asset::registry;
-std::unordered_map<std::string, std::weak_ptr<Object::engineObject>> Asset::cache;
-
-
-namespace fs = std::filesystem;//dont do this
+std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> Asset::cache;
 
 
 inline std::string Asset::GenerateUUID()
@@ -32,12 +29,11 @@ inline std::string Asset::GenerateUUID()
 void Asset::scanAssetDirectory(const std::string& folder) {
     size_t loaded = 0;
 
-    for (auto& entry : fs::recursive_directory_iterator(folder)) {
+    for (auto& entry : std::filesystem::recursive_directory_iterator(folder)) {
         if (entry.path().extension() == ".cea") {
             auto meta = loadMetadata(entry.path().string());
 
             if (!meta.has_value()) {
-                // Failed to load, skip but continue scanning
                 continue;
             }
 
@@ -58,7 +54,7 @@ std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath)
             "Asset error: Could not open asset file: %s", fullPath.c_str());
         return std::nullopt;
     }
-
+    // Initialize JSON parser and pass file to it
     json j;
     try {
         f >> j;
@@ -69,7 +65,6 @@ std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath)
             fullPath.c_str(), e.what());
         return std::nullopt;
     }
-
     // Validate required fields
     if (!j.contains("id") || !j.contains("type")) {
         Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
@@ -77,7 +72,7 @@ std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath)
             fullPath.c_str());
         return std::nullopt;
     }
-
+	// Validate field types
     if (!j["id"].is_string() || !j["type"].is_string()) {
         Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
             "Asset error: 'id' and 'type' must be strings in %s",
@@ -104,58 +99,10 @@ std::optional<Asset::assetInfo> Asset::loadMetadata(const std::string& fullPath)
     return info;
 }
 
-
 const Asset::assetInfo* Asset::get(std::string id) {
     auto it = registry.find(id);
     if (it == registry.end()) return nullptr;
     return &it->second;
-}
-
-void Asset::defaultLoad(json j, std::shared_ptr<Object::engineObject> obj) {
-    // load textures
-    if (j.contains("textures")) {
-        for (const auto& texPath : j["textures"]) {
-            SDL_Texture* t = Texture::loadTex(texPath.get<std::string>().c_str());
-            if (t) obj->textures.push_back(t);
-        }
-    }
-    if (!obj->textures.size())
-        obj->textures.push_back(Texture::loadTex("resource/icon.png"));
-
-    obj->texIndex = j.value("texIndex", 0);
-
-    // load hull
-    obj->hull = { 0,0,10,10 };
-    if (j.contains("hull")) {
-        auto h = j["hull"];
-        obj->hull = { h[0], h[1], h[2], h[3] };
-    }
-
-    obj->centered = j.value("centered", true);
-    obj->fixed = j.value("fixed", false);
-    obj->flip = static_cast<SDL_FlipMode>(j.value("flip", 0));
-    obj->scale = j.value("scale", 1.0f);
-    obj->rot = j.value("rot", 0.0);
-    obj->depth = j.value("depth", 0);
-    obj->drawDefault = j.value("drawDefault", true);
-    obj->drawFlag = j.value("drawFlag", true);
-    obj->updateFlag = j.value("updateFlag", true);
-
-    // load scripts
-    if (j.contains("scripts")) {
-        for (const auto& scriptPath : j["scripts"]) {
-            std::string path = scriptPath.get<std::string>();
-            Lua::attachScript(path, obj);
-        }
-    }
-}
-
-void Asset::registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObject> obj)> loader, Asset::assetType type) {
-    if (type == assetType::Unknown) 
-        type = static_cast<assetType>(100 + loaders.size());
-    loaders[name] = {name, loader, type};
-
-	Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
 }
 
 void Asset::CreateDummyAsset()
@@ -171,7 +118,7 @@ void Asset::CreateDummyAsset()
 
     nlohmann::ordered_json j;
     j["id"] = id;
-    j["type"] = "EngineObject";
+    j["type"] = "defaultObject";
     j["textures"] = { "resource/test.png", "resource/test2.png" };
     j["texIndex"] = 0;
     j["hull"] = { 0, 0, 64, 64 };
@@ -184,7 +131,7 @@ void Asset::CreateDummyAsset()
     j["drawDefault"] = true;
     j["drawFlag"] = true;
     j["updateFlag"] = true;
-    j["scripts"] = {"resource/rotate.lua"};
+    j["scripts"] = {"resource/dummy.lua"};
 
     std::ofstream f("resource/dummy.cea");
     if (!f.is_open()) {
@@ -198,11 +145,13 @@ void Asset::CreateDummyAsset()
 
 void Asset::init()
 {
-    //register object types CHECK LOAD ORDER FOR REGISTERING CUSTOM TYPES
-    registerObjectType("EngineObject", nullptr, assetType::EngineObject);
-    registerObjectType("ButtonObject", nullptr, assetType::ButtonObject);
+    // Register asset types
+    registerObjectType<Object::defaultObject>("defaultObject", nullptr, assetType::DefaultObject);//change to defaultObject
+    registerObjectType<Object::buttonObject>("buttonObject", nullptr, assetType::ButtonObject);
 
-	//scan library
+	// Scan library
     scanAssetDirectory("resource/");
 
+    // Generate new dummy
+    CreateDummyAsset();
 }

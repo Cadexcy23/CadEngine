@@ -10,7 +10,7 @@
 #include <queue>
 #include <atomic>
 #include <condition_variable>
-#include <unordered_map> // added
+#include <unordered_map>
 
 #include "../Scene/object.h"
 
@@ -25,9 +25,8 @@ public:
 
     struct netObject {
         uint32_t netID;
-        //tick rate?
-        std::shared_ptr<Object::engineObject> obj;
-        std::string texturePath;//get rid of and come up with a better solution, premade objects?
+        std::string assetID;
+        std::shared_ptr<Object::engineObjectBase> obj;
     };
 
     enum class NetworkEventType
@@ -35,12 +34,12 @@ public:
         None = 0,
         ClientConnected,                // server only
         ClientDisconnected,             // server only
-        MessageReceived,                // server: from clientSocket; client: from server
+        MessageReceived,                // server: from clientSocket. client: from server
         ServerStarted,                  // server only (success)
         ServerStopped,                  // server only
         ClientConnectedToServer,        // client only (success)
         ClientDisconnectedFromServer,   // client only
-        Error                           // generic error (use message)
+        Error                           // generic error
     };
 
     struct NetworkEvent
@@ -81,25 +80,14 @@ public:
         NetworkServer();
         ~NetworkServer();
 
-        // Start listening on the given port (returns true on success)
         bool start(uint16_t port);
-
-        // Stop listening and shutdown all clients (blocks until threads clean up)
         void stop();
-
         bool isRunning() const { return running.load(); }
-
-        // Send a string to a single client (returns false on failure)
         bool sendToClient(SOCKET client, const void* data, size_t len);
-
-        // Broadcast to all connected clients
         void broadcast(const void* data, size_t len);
-
-        // Poll one network event (non-blocking)
         bool pollEvent(NetworkEvent& out) { return events.poll(out); }
-
         void broadcastSnapshotToAllClients(uint32_t tick);
-        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObject> obj, const std::string& texture_path);
+        std::shared_ptr<Network::netObject> registerAndSpawnNetworkObject(std::shared_ptr<Object::engineObjectBase> obj, const std::string& assetID);
         void broadcastDespawn(uint32_t id);
         void auditNetObjects();
 
@@ -132,21 +120,12 @@ public:
         NetworkClient();
         ~NetworkClient();
 
-        // Connect to server (returns true on success)
         bool connectTo(const std::string& ip, uint16_t port);
-
-        // Disconnect from server (blocks until thread exits)
         void disconnect();
-
-        // Send a message to the connected server
         bool sendData(const void* data, size_t len);
         bool sendData(const std::string& msg) {return sendData(msg.data(), msg.size());};
-
         bool isConnected() const { return connected.load(); }
-
-        // Poll one network event (non-blocking)
         bool pollEvent(NetworkEvent& out) { return events.poll(out); }
-
         void handleNetworkBuffer(const std::vector<uint8_t>& buf);
 
         std::unordered_map<uint32_t, std::shared_ptr<Network::netObject>> netObjects;

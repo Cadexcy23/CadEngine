@@ -1,6 +1,6 @@
 {
-    "id": "6cdc2703ec9ef30856f4586748cb4a12",
-    "type": "EngineObject",
+    "id": "36e55a8b2063d91494a5c54246345c67",
+    "type": "defaultObject",
     "textures": [
         "resource/test.png",
         "resource/test2.png"
@@ -22,6 +22,6 @@
     "drawFlag": true,
     "updateFlag": true,
     "scripts": [
-        "resource/rotate.lua"
+        "resource/dummy.lua"
     ]
 }

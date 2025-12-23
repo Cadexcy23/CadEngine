@@ -1,23 +1,22 @@
 {
     "id": "e51d80cd2e5dab0bf9b41e7b7fc2afde",
-    "type": "ButtonObject",
+    "type": "buttonObject",
     "textures": [
-        "resource/test.png",
-        "resource/test2.png"
+        
     ],
     "texIndex": 0,
     "hull": [
+        1920,
         0,
         0,
-        64,
-        64
+        0
     ],
-    "centered": true,
-    "fixed": false,
+    "centered": false,
+    "fixed": true,
     "flip": 0,
     "scale": 1.0,
     "rot": 0.0,
-    "depth": 0,
+    "depth": -1,
     "drawDefault": true,
     "drawFlag": true,
     "updateFlag": true

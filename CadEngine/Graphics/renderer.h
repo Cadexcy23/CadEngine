@@ -17,6 +17,7 @@ public:
 	static SDL_FRect screenBounds;
 	static SDL_FPoint screenOffSet;
 	static double screenRotation;
+	static bool hullDebugDraw;
 
 	static void updateScreenProperties();
 	static SDL_Point setResolution(SDL_Point res);

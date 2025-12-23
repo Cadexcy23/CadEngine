@@ -1,6 +1,6 @@
 {
     "id": "51eef2418bd189a9977230ec58838030",
-    "type": "VelObject",
+    "type": "velObject",
     "textures": [
         "resource/test.png",
         "resource/test2.png",
@@ -22,10 +22,20 @@
     "drawDefault": true,
     "drawFlag": true,
     "updateFlag": true,
-	"velocity": [100, 100],
-	"spin": 360,
+	"velocity": [0, 0],
+	"spin": 0,
 	"scripts": [
-        "resource/velExample.lua",
-		"resource/rotate.lua"
-    ]
+        "resource/example/velExample.lua"
+    ],
+    "functions": {
+        "draw": [],
+        "update": [
+            "perpetuate",
+            "keepInScreen",
+            "steer",
+            "timedDespawn"
+        ],
+        "spawn": [],
+        "despawn": ["duplicate"]
+    }
 }

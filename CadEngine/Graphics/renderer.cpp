@@ -15,6 +15,7 @@ SDL_FPoint Renderer::camPos = { 0, 0 };
 SDL_FRect Renderer::screenBounds = { 0, 0, baseRes.x, baseRes.y };
 SDL_FPoint Renderer::screenOffSet = { 0, 0 };
 double Renderer::screenRotation = 0;
+bool Renderer::hullDebugDraw = false;
 
 
 std::vector<std::string> splitString(const std::string& str, const std::string& delim = " ")
@@ -99,7 +100,7 @@ void Renderer::renderScreen()
 	SDL_SetRenderTarget(renderer, screenTex);
 }
 
-bool compDepth(std::shared_ptr<Object::engineObject> a, std::shared_ptr<Object::engineObject> b)
+bool compDepth(std::shared_ptr<Object::engineObjectBase> a, std::shared_ptr<Object::engineObjectBase> b)
 {
 	return a->depth > b->depth;
 }

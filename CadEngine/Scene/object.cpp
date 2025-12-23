@@ -1,8 +1,10 @@
 #include "object.h"
 #include "../Core/engine.h"
 
-//EngineObject
-void Object::engineObject::drawHull()
+std::unordered_map<std::string, std::function<void(std::shared_ptr<Object::engineObjectBase>)>> Object::funcRegistry;
+
+//EngineObjectBase
+void Object::engineObjectBase::drawHull()
 {
 	SDL_Color color = { 255, 255, 255, 255 };
 	if (fixed)
@@ -36,7 +38,7 @@ void Object::engineObject::drawHull()
 	Renderer::drawLine({ modHull.x, modHull.y + modHull.h - 1 }, { modHull.x + modHull.w - 1, modHull.y }, color);
 }
 
-SDL_FRect Object::engineObject::getBounds()
+SDL_FRect Object::engineObjectBase::getBounds()
 {
 	if (centered)
 	{
@@ -58,7 +60,7 @@ SDL_FRect Object::engineObject::getBounds()
 	}
 }
 
-bool Object::engineObject::inScreen()
+bool Object::engineObjectBase::inScreen()
 {
 	if (fixed)
 		return true;
@@ -71,7 +73,7 @@ bool Object::engineObject::inScreen()
 	return false;
 }
 
-bool Object::engineObject::mouseInBounds()
+bool Object::engineObjectBase::mouseInBounds()
 {
 	SDL_FRect bounds = getBounds();
 	SDL_FPoint checkPoint = Input::mousePos;
@@ -84,7 +86,7 @@ bool Object::engineObject::mouseInBounds()
 	return false;
 }
 
-void Object::engineObject::resetSize()
+void Object::engineObjectBase::resetSize()
 {
 	float w, h;
 	SDL_GetTextureSize(textures.front(), &w, &h);
@@ -93,51 +95,7 @@ void Object::engineObject::resetSize()
 	scale = 1;
 }
 
-void Object::engineObject::draw()
-{
-	if (drawFlag && inScreen())
-	{
-		if (drawDefault)
-		{
-			SDL_FRect modHull = hull;
-			if (!fixed)
-			{
-				modHull.x -= Renderer::camPos.x;
-				modHull.y -= Renderer::camPos.y;
-				modHull.x *= Renderer::zoom;
-				modHull.y *= Renderer::zoom;
-				modHull.x += Renderer::baseRes.x / 2;
-				modHull.y += Renderer::baseRes.y / 2;
-
-				modHull.w *= Renderer::zoom;
-				modHull.h *= Renderer::zoom;
-			}
-			Texture::drawTex(textures[texIndex], modHull, rot, centered, flip, scale);
-		}
-		if (Engine::debugLevel)
-			drawHull();
-		for (auto& func : drawFuncs) {
-			func(shared_from_this());
-		}
-	}
-}
-
-void Object::engineObject::update()
-{
-	for (auto& func : spawnFuncs) {
-		func(shared_from_this());
-	}
-	spawnFuncs.clear();
-
-	if (updateFlag)
-	{
-		for (auto& func : updateFuncs) {
-			func(shared_from_this());
-		}
-	}
-}
-
-Object::engineObject::engineObject(
+Object::engineObjectBase::engineObjectBase(
 	const SDL_FRect& hull,
 	std::vector<SDL_Texture*> textures,
 	double rot,
@@ -153,25 +111,54 @@ drawDefault(true), drawFlag(true), updateFlag(true), remove(false), texIndex(0)
 	timeCreated = clock();
 }
 
-Object::engineObject::~engineObject()
+Object::engineObjectBase::~engineObjectBase()
 {
 	Logger::log(Logger::LogCategory::Engine, Logger::LogLevel::Trace, "EngineObject destroyed");
+}
+
+//DefaultObject
+Object::defaultObject::defaultObject(
+	const SDL_FRect& hull,
+	std::vector<SDL_Texture*> textures,
+	double rot,
+	bool centered,
+	bool fixed,
+	SDL_FlipMode flip,
+	float scale,
+	int depth)
+	: engineObject(hull, textures, rot,
+		centered, fixed, flip, scale,
+		depth)
+	{
 }
 
 //ButtonObject
 void Object::buttonObject::update()
 {
-	if (updateFlag && mouseInBounds())
-	{
-		if (onHover)
-			onHover(shared_from_this());
-		if (onClick && Input::mouseStates[0] == 1)
-			onClick();
+	auto self = sharedFromDerived();
+
+	// Process spawn functions
+	for (auto& func : spawnFuncs) {
+		func(self);
 	}
-	else if (offHover)
-		offHover(shared_from_this());
-	for (auto& func : updateFuncs) {
-		func(shared_from_this());
+	spawnFuncs.clear();
+
+	// Process update functions
+	if (updateFlag) {
+		for (auto& func : updateFuncs) {
+			func(self);
+		}
+
+		// Extra button functionality
+		if (mouseInBounds())
+		{
+			if (onHover)
+				onHover(self);
+			if (onClick && Input::mouseStates[0] == 1)
+				onClick();
+		}
+		else if (offHover)
+			offHover(self);
 	}
 }
 
@@ -183,8 +170,6 @@ Object::buttonObject::buttonObject(
 	bool fixed,
 	SDL_FlipMode flip,
 	float scale,
-	SDL_FPoint vel,
-	double spin,
 	int depth)
 	: engineObject(hull, textures, rot,
 		centered, fixed, flip, scale,
