@@ -37,8 +37,18 @@ void Asset::scanAssetDirectory(const std::string& folder) {
                 continue;
             }
 
+            if (registry.find(meta->id) != registry.end()) {
+                Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Warn,
+                    "Asset warning: Duplicate asset ID '%s' in file %s. Skipping.",
+                    meta->id.c_str(), entry.path().string().c_str());
+                continue;
+            }
+
             registry[meta->id] = *meta;
             loaded++;
+            Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Trace,
+                "Asset with ID '%s' in file %s registered.",
+                meta->id.c_str(), entry.path().string().c_str());
         }
     }
 
@@ -145,11 +155,19 @@ void Asset::CreateDummyAsset()
 
 void Asset::init()
 {
+    Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info,
+        "Initializing Asset content");
+
     // Register asset types
     registerObjectType<Object::defaultObject>("defaultObject", nullptr, assetType::DefaultObject);//change to defaultObject
     registerObjectType<Object::buttonObject>("buttonObject", nullptr, assetType::ButtonObject);
 
-	// Scan library
+    // Register object functions
+    Object::registerObjectFunc<Object::engineObjectBase>("resetSize", [](std::shared_ptr<Object::engineObjectBase> obj) {
+        obj->resetSize(); });
+
+
+    // Scan library
     scanAssetDirectory("resource/");
 
     // Generate new dummy
