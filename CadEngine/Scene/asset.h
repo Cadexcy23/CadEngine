@@ -28,7 +28,7 @@ public:
         assetType type;
         std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader;
         std::function<std::shared_ptr<Object::engineObjectBase>()> creator;
-	};
+    };
 
     struct assetInfo {
         std::string id;
@@ -46,18 +46,18 @@ public:
     static std::unordered_map<std::string, assetLoader> loaders;
     static std::unordered_map<std::string, assetInfo> registry;
     static std::unordered_map<std::string, std::weak_ptr<Object::engineObjectBase>> cache;
-    
+
     template<typename Derived>
     static void registerObjectType(std::string name, std::function<void(const json j, std::shared_ptr<Object::engineObjectBase> obj)> loader, Asset::assetType type = assetType::Unknown) {
-    if (type == assetType::Unknown)
+        if (type == assetType::Unknown)
             type = static_cast<assetType>(int(assetType::COUNT) + loaders.size());
-        loaders[name] = { name, type, loader,  
-        []() -> std::shared_ptr<Object::engineObjectBase> { 
+        loaders[name] = { name, type, loader,
+        []() -> std::shared_ptr<Object::engineObjectBase> {
                 return std::make_shared<Derived>();
-            } 
+            }
         };
 
-        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: %s ID: %i", name.c_str(), type);
+        Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Info, "Registered asset type: \"%s\" ID: %i", name.c_str(), type);
     }
     static void defaultLoad(const json& j, std::shared_ptr<Object::engineObjectBase> obj) {
         // load textures
@@ -77,10 +77,15 @@ public:
         obj->texIndex = j.value("texIndex", 0);
 
         // load hull
-        obj->hull = { 0,0,10,10 };
+        obj->hull = { 0,0,0,0 };
         if (j.contains("hull")) {
             auto h = j["hull"];
             obj->hull = { h[0], h[1], h[2], h[3] };
+        }
+        // if hull w or h is 0, set to texture size
+        if (obj->hull.w <= 0 || obj->hull.h <= 0) {
+            if (obj->hull.w == 0) obj->hull.w = static_cast<float>(obj->textures[0]->w);
+            if (obj->hull.h == 0) obj->hull.h = static_cast<float>(obj->textures[0]->h);
         }
 
         obj->centered = j.value("centered", true);
@@ -138,26 +143,26 @@ public:
     static std::shared_ptr<T> load(const std::string& assetID) {
         static_assert(std::is_base_of_v<Object::engineObjectBase, T>,
             "T must inherit from engineObjectBase");
-        
+
         // check cache first then load from prototype?
         //if (auto it = cache.find(id); it != cache.end()) {
         //    if (auto existing = it->second.lock()) {
         //        return existing; //make a seperate path that makes a copy?
         //    }
         //}
-        
+
         const assetInfo* info = get(assetID);
         if (!info) {
             Logger::log(Logger::LogCategory::Scene, Logger::LogLevel::Error,
                 "Asset with ID %s not found in registry", assetID.c_str());
             return nullptr;
         }
-        
+
         // load metadata
         std::ifstream f(info->assetFilePath);
         json j;
         f >> j;
-        
+
         // Get type
         std::string typeS = j["type"].get<std::string>();
 
@@ -166,11 +171,11 @@ public:
 
         // Default load
         defaultLoad(j, obj);
-        
-	    // Check if the derived type has a custom loader
-        if(auto cusLoad = loaders[typeS].loader)
+
+        // Check if the derived type has a custom loader
+        if (auto cusLoad = loaders[typeS].loader)
             cusLoad(j, obj);
-        
+
         return obj;
     }
 };
