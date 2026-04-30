@@ -5,7 +5,7 @@
 #include "../Scene/object.h"
 #include "../json.hpp"
 #include "../Core/logger.h"
-#include "../InputOutput/lua.h"
+//#include "../InputOutput/lua.h"
 
 using json = nlohmann::json;
 
