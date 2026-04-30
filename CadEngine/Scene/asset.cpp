@@ -3,7 +3,7 @@
 #include <chrono>
 #include <filesystem>
 #include "../Core/engine.h"
-#include "../InputOutput/lua.h"
+//#include "../InputOutput/lua.h"
 
 
 std::unordered_map<std::string, Asset::assetLoader> Asset::loaders;

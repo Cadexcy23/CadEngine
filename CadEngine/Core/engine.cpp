@@ -38,7 +38,7 @@ bool Engine::initEngine(const char* title, SDL_WindowFlags winFlags)
 	Renderer::initRenderer();
 	Text::initFont();
 	Input::initController();
-	Lua::init();
+	//Lua::init();
 
 	return true;
 }

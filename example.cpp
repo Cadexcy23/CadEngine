@@ -310,18 +310,18 @@ void exampleInit()
 	Asset::registerObjectType<Example::velObject>("velObject", velLoad);
 
 	// register velObject as a lua type
-	Lua::registerType<Example::velObject>("velObject",
+	/*Lua::registerType<Example::velObject>("velObject",
 		"vel", &Example::velObject::vel,
 		"spin", &Example::velObject::spin,
 		"flipVelX", [](Example::velObject& obj) { obj.vel.x *= -1; },
 		"flipVelY", [](Example::velObject& obj) { obj.vel.y *= -1; }
-	);
+	);*/
 
 	// register custom engine functions
-	Lua::registerEngineFunction("printObjectCount",
+	/*Lua::registerEngineFunction("printObjectCount",
 		[]() {
 			Logger::log(Logger::LogCategory::General, Logger::LogLevel::Info, "Object count: %i", Scene::activeObjects.size());
-		});
+		});*/
 
 	//load font
 	Text::loadFont("resource/font/segoeuithibd.ttf", 32);

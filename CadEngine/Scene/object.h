@@ -8,6 +8,7 @@
 #include "../Graphics/renderer.h"
 #include "../Graphics/texture.h"
 #include "../Core/logger.h"
+#include "../InputOutput/serialization.h"
 
 using json = nlohmann::json;
 
@@ -40,6 +41,8 @@ public:
 		virtual void draw() {}
 		virtual void drawHull();
 		virtual void loadFunctions(const json& j) {};
+		virtual void serialize(std::vector<uint8_t>& out) {};
+		virtual void deserialize(const std::vector<uint8_t>& ptr, size_t& idx) {};
 
 		engineObjectBase(
 			const SDL_FRect& hull = { 0,0,10,10 },
@@ -196,6 +199,30 @@ public:
 					}
 				}
 			}
+		}
+		void serialize(std::vector<uint8_t>& out) override
+		{
+			Serialization::append_float(out, hull.x);
+			Serialization::append_float(out, hull.y);
+			Serialization::append_float(out, hull.w);
+			Serialization::append_float(out, hull.h);
+			Serialization::append_double(out, rot);
+			Serialization::append_i32(out, texIndex);
+			Serialization::append_float(out, scale);
+			Serialization::append_u8(out, static_cast<uint8_t>(flip));
+			Serialization::append_i32(out, depth);
+		}
+		void deserialize(const std::vector<uint8_t>& ptr, size_t& idx) override
+		{
+			hull.x = Serialization::read_float(ptr, idx);
+			hull.y = Serialization::read_float(ptr, idx);
+			hull.w = Serialization::read_float(ptr, idx);
+			hull.h = Serialization::read_float(ptr, idx);
+			rot = Serialization::read_double(ptr, idx);
+			texIndex = Serialization::read_i32(ptr, idx);
+			scale = Serialization::read_float(ptr, idx);
+			flip = static_cast<SDL_FlipMode>(Serialization::read_u8(ptr, idx));
+			depth = Serialization::read_i32(ptr, idx);
 		}
 
 		engineObject(

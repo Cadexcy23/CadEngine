@@ -5,7 +5,14 @@
 static class Serialization {
 public:
 
-    static void append_uint8(std::vector<uint8_t>& b, uint8_t v) { b.push_back(v); }
+    static void append_u8(std::vector<uint8_t>& b, uint8_t v) { b.push_back(v); }
+    static void append_i8(std::vector<uint8_t>& b, int8_t v) {
+        b.push_back(static_cast<uint8_t>(v));
+    }
+    static void append_u16(std::vector<uint8_t>& b, uint16_t v) {
+        uint8_t* p = (uint8_t*)&v;
+        b.insert(b.end(), p, p + sizeof(v));
+    }
     static void append_u32(std::vector<uint8_t>& b, uint32_t v) {
         uint8_t* p = (uint8_t*)&v;
         b.insert(b.end(), p, p + sizeof(v));
@@ -27,6 +34,12 @@ public:
         b.insert(b.end(), s.begin(), s.end());
     }
     static uint8_t read_u8(const std::vector<uint8_t>& b, size_t& idx) { return b[idx++]; }
+    static int8_t read_i8(const std::vector<uint8_t>& b, size_t& idx) {
+        int8_t v; memcpy(&v, b.data() + idx, sizeof(v)); idx += sizeof(v); return v;
+    }
+    static uint16_t read_u16(const std::vector<uint8_t>& b, size_t& idx) {
+        uint16_t v; memcpy(&v, b.data() + idx, sizeof(v)); idx += sizeof(v); return v;
+    }
     static uint32_t read_u32(const std::vector<uint8_t>& b, size_t& idx) {
         uint32_t v; memcpy(&v, b.data() + idx, sizeof(v)); idx += sizeof(v); return v;
     }
